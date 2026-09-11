@@ -1,0 +1,6 @@
+{
+  "name": "ShoonaConnect",
+  "description": "ShoonaConnect is the private couples sanctuary with password & trivia protected love letters, precision live milestone countdowns and gift storer, love story dateline, memory time capsules, real-time chat, and couple games.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
