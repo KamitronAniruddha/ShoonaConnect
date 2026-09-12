@@ -13,6 +13,7 @@ import { VaultView } from './components/VaultView';
 import { TimelineView } from './components/TimelineView';
 import { DailyAndMoodView } from './components/DailyAndMoodView';
 import { BucketListView } from './components/BucketListView';
+import { DreamsAndGoalsView } from './components/DreamsAndGoalsView';
 import { SettingsView } from './components/SettingsView';
 import { AuthModal } from './components/AuthModal';
 import { OnboardingView } from './components/OnboardingView';
@@ -21,6 +22,8 @@ import { LandingView } from './components/LandingView';
 import { CoupleGamesView } from './components/CoupleGamesView';
 import { AchievementsView } from './components/AchievementsView';
 import { DissolutionNoticeModal } from './components/DissolutionNoticeModal';
+import { PartnerNotificationToasts } from './components/PartnerNotificationToasts';
+import { BreakupDiscussionRoom } from './components/BreakupDiscussionRoom';
 import { supabase, createSafeChannel } from './lib/supabase';
 import { messageRowToMessage } from './utils/supabaseMappers';
 import { Heart } from 'lucide-react';
@@ -122,6 +125,16 @@ const MainApp: React.FC = () => {
     );
   }
 
+  // Mutual breakup proposal discussion mode
+  if ((couple.relationshipStatus as string) === 'breakup_pending') {
+    return (
+      <>
+        <DissolutionNoticeModal />
+        <BreakupDiscussionRoom />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50/40 via-slate-50 to-pink-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
       <DissolutionNoticeModal />
@@ -147,11 +160,24 @@ const MainApp: React.FC = () => {
         {activeTab === 'games' && <CoupleGamesView />}
         {activeTab === 'achievements' && <AchievementsView />}
         {activeTab === 'bucket' && <BucketListView />}
+        {activeTab === 'dreams' && <DreamsAndGoalsView />}
         {activeTab === 'features' && <LandingView isInsideApp setActiveTab={setActiveTab} />}
         {activeTab === 'settings' && (
           <SettingsView onSetLockPin={() => setIsLocked(false)} setActiveTab={setActiveTab} />
         )}
       </main>
+
+      {/* Real-time Bottom-Right Toast Notifications for Partner Messages & Game Challenges */}
+      <PartnerNotificationToasts
+        setActiveTab={setActiveTab}
+        onOpenGame={(gameType, gameId) => {
+          localStorage.setItem('shoona_active_game_select', gameType);
+          if (gameId) {
+            localStorage.setItem('shoona_active_game_id', gameId);
+          }
+          setActiveTab('games');
+        }}
+      />
     </div>
   );
 };

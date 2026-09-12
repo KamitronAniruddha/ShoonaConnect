@@ -9,6 +9,7 @@ import {
   createTicTacToeGame,
   acceptGameChallenge,
   declineGameChallenge,
+  cancelGameChallenge,
   executeMove,
   sendMatchReaction,
   requestOrAcceptRematch,
@@ -28,7 +29,8 @@ import {
 } from '../utils/gameAudio';
 import { SymbolPickerModal } from './SymbolPickerModal';
 import { GameLiveChat } from './GameLiveChat';
-import { supabase } from '../lib/supabase';
+import { WaitingForCoupleModal } from './WaitingForCoupleModal';
+import { supabase, createSafeChannel, sendRealtimeBroadcast } from '../lib/supabase';
 import confetti from 'canvas-confetti';
 import {
   Heart,
@@ -243,13 +245,39 @@ export const CoupleTicTacToe: React.FC<CoupleTicTacToeProps> = ({ onBackToGames 
     if (!coupleId || !userProfile) return;
     setMoveError(null);
     try {
-      await createTicTacToeGame(coupleId, userProfile, partnerProfile, {
+      const gameId = await createTicTacToeGame(coupleId, userProfile, partnerProfile, {
         isChallenge,
         starterSymbol: myCustomSymbol,
       });
       setShowResultModal(false);
+
+      // Send realtime notification toast broadcast to partner
+      if (partnerProfile) {
+        sendRealtimeBroadcast(`partner_notifications:${coupleId}`, 'game_invitation', {
+          hostUid: userProfile.uid,
+          hostName: userProfile.displayName || 'Your Sweetheart',
+          gameType: 'tictactoe',
+          gameId,
+          title: 'Tic-Tac-Toe 3x3 Match 💕',
+        });
+      }
     } catch (err) {
       setMoveError('Could not start game. Check your connection.');
+    }
+  };
+
+  // Cancel outgoing challenge
+  const handleCancelGame = async () => {
+    if (!activeGame || !coupleId || !userProfile) return;
+    try {
+      await cancelGameChallenge(coupleId, activeGame.id);
+      sendRealtimeBroadcast(`partner_notifications:${coupleId}`, 'game_invitation_cancelled', {
+        cancelledBy: userProfile.uid,
+        cancelledByName: userProfile.displayName || 'Host',
+        gameId: activeGame.id,
+      });
+    } catch (err) {
+      console.warn('Cancel challenge error:', err);
     }
   };
 
@@ -835,10 +863,10 @@ export const CoupleTicTacToe: React.FC<CoupleTicTacToeProps> = ({ onBackToGames 
             <div className="space-y-1">
               <h3 className="text-xl sm:text-2xl font-black font-fraunces text-white">
                 {activeGame.winner === 'draw'
-                  ? "It's a Draw! 💕"
+                  ? "It's a Draw! 🤝"
                   : activeGame.winner === userProfile?.uid
-                  ? `${userProfile?.displayName || 'You'} Wins! 🎉`
-                  : `${activeGame.winnerName} Wins! 🎉`}
+                  ? "You Won! 🎉"
+                  : `${activeGame.winnerName || partnerProfile?.displayName || 'Partner'} Won! ❤️`}
               </h3>
               <p className="text-xs text-neutral-300 font-medium px-2">
                 {lastResultMessage}
@@ -1076,6 +1104,19 @@ export const CoupleTicTacToe: React.FC<CoupleTicTacToeProps> = ({ onBackToGames 
           </div>
         </div>
       )}
+      {/* Waiting for Couple Modal Overlay */}
+      {activeGame &&
+        activeGame.status === 'waiting' &&
+        activeGame.playerX.uid === userProfile?.uid && (
+          <WaitingForCoupleModal
+            gameTitle="Tic-Tac-Toe 3x3 Match 💕"
+            gameSubtitle={`Challenging ${partnerProfile?.displayName || 'Partner'}! Waiting for them to accept & join...`}
+            gameType="tictactoe"
+            gameId={activeGame.id}
+            onCancelGame={handleCancelGame}
+            onClose={handleCancelGame}
+          />
+        )}
     </div>
   );
 };

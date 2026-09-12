@@ -47,6 +47,7 @@ import { InvitationData } from '../utils/invitationPdf';
 import { PhotoLightboxModal } from './PhotoLightboxModal';
 import { ChangePhotoModal } from './ChangePhotoModal';
 import { PartnerProfileModal } from './PartnerProfileModal';
+import { FeatureShowcaseModal } from './FeatureShowcaseModal';
 import { SupabaseConnectModal } from './SupabaseConnectModal';
 import { isSupabaseConfigured } from '../lib/supabase';
 
@@ -68,6 +69,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
     logout,
   } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+
+  const [showFeatureShowcase, setShowFeatureShowcase] = useState(false);
 
   // Settings states
   const [displayName, setDisplayName] = useState(userProfile?.displayName || '');
@@ -263,7 +266,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6 pb-28 text-slate-800 dark:text-slate-100">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white flex items-center gap-2 font-display">
             <Settings className="w-6 h-6 text-rose-500" />
@@ -274,15 +277,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
           </p>
         </div>
 
-        {/* Theme Toggler Quick Button */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs font-semibold hover:border-rose-300 transition-all cursor-pointer shadow-xs"
-        >
-          {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-rose-500" />}
-          <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
-        </button>
+        {/* Action Quick Buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowFeatureShowcase(true)}
+            className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-rose-500/10 to-pink-500/10 dark:from-rose-500/20 dark:to-pink-500/20 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400 hover:scale-105 hover:from-rose-500 hover:to-pink-500 hover:text-white hover:border-transparent transition-all flex items-center gap-1.5 cursor-pointer shadow-xs animate-pulse"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-rose-500" />
+            <span className="hidden sm:inline">Tour Features</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs font-semibold hover:border-rose-300 transition-all cursor-pointer shadow-xs"
+          >
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-rose-500" />}
+            <span className="hidden sm:inline">{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Live Working Website Link & Multi-Device Card */}
@@ -1194,6 +1208,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
           <LogOut className="w-4 h-4" /> Sign Out
         </button>
       </div>
+      {/* Feature Showcase Tour */}
+      {showFeatureShowcase && (
+        <FeatureShowcaseModal
+          isOpen={showFeatureShowcase}
+          onClose={() => setShowFeatureShowcase(false)}
+          activeTheme={(couple?.theme as any) || 'rose'}
+        />
+      )}
     </div>
   );
 };

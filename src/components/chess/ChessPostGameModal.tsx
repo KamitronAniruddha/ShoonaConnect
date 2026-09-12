@@ -115,7 +115,7 @@ export const ChessPostGameModal: React.FC<ChessPostGameModalProps> = ({
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-bold font-fraunces text-white">
-            {isWinner ? 'Glorious Victory! 💕' : isDraw ? 'Mutual Respect Draw! 🤝' : 'Honorable Match! 💕'}
+            {isWinner ? 'You Won! 🎉' : isDraw ? "It's a Draw! 🤝" : `Partner (${partnerName}) Won! ❤️`}
           </h2>
 
           <p className="text-sm text-neutral-300 font-medium">

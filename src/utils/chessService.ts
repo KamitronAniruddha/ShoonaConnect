@@ -676,6 +676,22 @@ export async function declineChessChallenge(
 }
 
 /**
+ * Cancel outgoing challenge
+ */
+export async function cancelChessChallenge(
+  coupleId: string,
+  challengeId: string
+): Promise<void> {
+  await supabase
+    .from('chess_challenges')
+    .update({
+      status: 'declined',
+    })
+    .eq('id', challengeId)
+    .eq('couple_id', coupleId);
+}
+
+/**
  * Realtime subscription to Chess games
  */
 export function listenToChessGames(

@@ -115,6 +115,7 @@ export const DatesView: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDate, setEditingDate] = useState<ImportantDate | null>(null);
   const [expandedDateId, setExpandedDateId] = useState<string | null>(null);
+  const [expandedBreakdownId, setExpandedBreakdownId] = useState<string | null>(null);
 
   // Live timer tick for high-precision countdown
   const [now, setNow] = useState(new Date());
@@ -309,11 +310,75 @@ export const DatesView: React.FC = () => {
     }
   };
 
+  // Synthesize dynamic dates from couple profiles (Anniversary + Partner Birthdays)
+  const synthesizedDates: ImportantDate[] = [];
+
+  if (couple) {
+    if (couple.anniversaryDate) {
+      synthesizedDates.push({
+        id: 'anniversary-couple',
+        coupleId: couple.id,
+        title: `${couple.coupleName || 'Our'} Anniversary 💍`,
+        date: couple.anniversaryDate,
+        time: couple.anniversaryTime || '12:00',
+        category: 'anniversary',
+        isRecurring: true,
+        reminderDays: 7,
+        description: 'The magical day our private couple sanctuary began!',
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    const partnerNames = couple.userNames || {};
+    const keys = Object.keys(partnerNames);
+
+    if (couple.partner1Birthday) {
+      const p1Id = couple.creatorId;
+      const p1Name = partnerNames[p1Id] || 'Partner 1';
+      synthesizedDates.push({
+        id: 'birthday-p1',
+        coupleId: couple.id,
+        title: `${p1Name}'s Birthday 🎂`,
+        date: couple.partner1Birthday,
+        time: '00:00',
+        category: 'birthday',
+        isRecurring: true,
+        reminderDays: 7,
+        description: `Celebrating the birth of the most beautiful soul: ${p1Name}! 🎉`,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    if (couple.partner2Birthday) {
+      const p2Id = couple.partnerId || keys.find(k => k !== couple.creatorId);
+      const p2Name = p2Id ? partnerNames[p2Id] || 'Partner 2' : 'Partner 2';
+      synthesizedDates.push({
+        id: 'birthday-p2',
+        coupleId: couple.id,
+        title: `${p2Name}'s Birthday 🎂`,
+        date: couple.partner2Birthday,
+        time: '00:00',
+        category: 'birthday',
+        isRecurring: true,
+        reminderDays: 7,
+        description: `Celebrating the birth of the most beautiful soul: ${p2Name}! 🎉`,
+        createdAt: new Date().toISOString()
+      });
+    }
+  }
+
   // Sort dates by upcoming days remaining
-  const sortedDates = [...dates].sort((a, b) => {
+  const allDatesIncludingSynthesized = [...dates, ...synthesizedDates];
+  const sortedDates = allDatesIncludingSynthesized.sort((a, b) => {
     const cdA = getPreciseCountdown(a.date, a.time, a.isRecurring);
     const cdB = getPreciseCountdown(b.date, b.time, b.isRecurring);
     return cdA.targetDate.getTime() - cdB.targetDate.getTime();
+  });
+
+  const activeReminders = sortedDates.filter((item) => {
+    const cd = getPreciseCountdown(item.date, item.time, item.isRecurring);
+    if (cd.isPast || cd.isToday) return false;
+    return cd.days <= (item.reminderDays || 7);
   });
 
   const filteredDates = sortedDates.filter((d) => {
@@ -412,6 +477,97 @@ export const DatesView: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* RELATIONSHIP REMINDERS HUB */}
+      {activeReminders.length > 0 && (
+        <div className="bg-[#fff9fa] dark:bg-[#1a0e14] border-2 border-rose-300 dark:border-rose-950 rounded-3xl p-5 sm:p-6 shadow-md relative overflow-hidden space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 dark:bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 rounded-2xl bg-rose-500/10 text-rose-500 animate-bounce-subtle">
+              <Bell className="w-5 h-5 text-rose-500" />
+            </span>
+            <div>
+              <h4 className="text-sm font-black text-rose-950 dark:text-rose-100 uppercase tracking-wider flex items-center gap-1.5">
+                Relationship Reminders Hub 💝
+              </h4>
+              <p className="text-[11px] text-rose-600 dark:text-rose-300 font-medium">
+                You have {activeReminders.length} active countdown alert{activeReminders.length > 1 ? 's' : ''} with customized reminder windows!
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activeReminders.map((item) => {
+              const cd = getPreciseCountdown(item.date, item.time, item.isRecurring);
+              const totalWindow = item.reminderDays || 7;
+              const progressPercent = Math.max(0, Math.min(100, ((totalWindow - cd.days) / totalWindow) * 100));
+              const cfg = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.other;
+
+              return (
+                <div
+                  key={`reminder-${item.id}`}
+                  className="bg-white dark:bg-slate-900 border border-rose-200/60 dark:border-rose-900/40 rounded-2xl p-4 space-y-3 shadow-xs hover:border-rose-300 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{cfg.label.split(' ')[1] || '📌'}</span>
+                      <span className="text-xs font-black text-slate-800 dark:text-white truncate max-w-[140px]">
+                        {item.title}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-black text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                      In {cd.days} Day{cd.days !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* Real-time Ticking Ticker with Days, Hours, Minutes, Seconds */}
+                  <div className="grid grid-cols-4 gap-2 text-center bg-rose-50/50 dark:bg-rose-950/20 rounded-xl py-2 px-1.5 border border-rose-100/50 dark:border-rose-950/30">
+                    <div>
+                      <span className="text-sm font-black text-slate-800 dark:text-white font-mono block">
+                        {String(cd.days).padStart(2, '0')}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 block">DAYS</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-black text-slate-800 dark:text-white font-mono block">
+                        {String(cd.hours).padStart(2, '0')}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 block">HRS</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-black text-slate-800 dark:text-white font-mono block">
+                        {String(cd.minutes).padStart(2, '0')}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400 block">MINS</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-black text-rose-500 font-mono block animate-pulse">
+                        {String(cd.seconds).padStart(2, '0')}
+                      </span>
+                      <span className="text-[9px] font-bold text-rose-400 block">SECS</span>
+                    </div>
+                  </div>
+
+                  {/* Visual Progress gauge based on customized reminderDays */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[9px] text-slate-400 font-bold uppercase">
+                      <span>Window: {totalWindow}d</span>
+                      <span>{Math.round(progressPercent)}% Passed</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-400 via-rose-500 to-pink-500 rounded-full transition-all duration-1000"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -535,6 +691,40 @@ export const DatesView: React.FC = () => {
               const cfg = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.other;
               const Icon = cfg.icon;
               const isExpanded = expandedDateId === item.id;
+              const isBreakdownExpanded = expandedBreakdownId === item.id;
+              const isVirtual = item.id.startsWith('anniversary') || item.id.startsWith('birthday');
+
+              // Advanced breakdowns
+              const absDiff = Math.abs(cd.targetDate.getTime() - now.getTime());
+              const totalWeeks = Math.floor(absDiff / (1000 * 60 * 60 * 24 * 7));
+              const totalHours = Math.floor(absDiff / (1000 * 60 * 60));
+              const totalMinutes = Math.floor(absDiff / (1000 * 60));
+              const totalSeconds = Math.floor(absDiff / 1000);
+
+              // Cycle Progress bar (only for recurring events)
+              let yearProgress = 0;
+              if (item.isRecurring) {
+                const targetYear = cd.targetDate.getFullYear();
+                const lastYearDate = new Date(cd.targetDate);
+                lastYearDate.setFullYear(targetYear - 1);
+                
+                const totalCycleTime = cd.targetDate.getTime() - lastYearDate.getTime();
+                const elapsedCycleTime = now.getTime() - lastYearDate.getTime();
+                yearProgress = Math.min(100, Math.max(0, (elapsedCycleTime / totalCycleTime) * 100));
+              }
+
+              // Next 3 occurrences
+              const occurrences: { year: number; weekday: string }[] = [];
+              const origDate = new Date(item.date);
+              const baseYear = now.getFullYear();
+              for (let i = 0; i < 3; i++) {
+                const occYear = baseYear + i;
+                const occDate = new Date(occYear, origDate.getMonth(), origDate.getDate());
+                occurrences.push({
+                  year: occYear,
+                  weekday: occDate.toLocaleDateString(undefined, { weekday: 'long' })
+                });
+              }
 
               return (
                 <div
@@ -549,9 +739,16 @@ export const DatesView: React.FC = () => {
                           <Icon className="w-5 h-5" />
                         </div>
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                            {cfg.label}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              {cfg.label}
+                            </span>
+                            {isVirtual && (
+                              <span className="px-1.5 py-0.2 rounded bg-rose-50 dark:bg-rose-950/35 text-rose-500 text-[8px] font-bold uppercase tracking-wide">
+                                Profile Sync 🔄
+                              </span>
+                            )}
+                          </div>
                           <h4 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
                             {item.title}
                           </h4>
@@ -559,20 +756,26 @@ export const DatesView: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!isVirtual ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(item)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(item.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-[9px] text-slate-400 italic">Auto-sync</span>
+                        )}
                       </div>
                     </div>
 
@@ -593,6 +796,14 @@ export const DatesView: React.FC = () => {
                       {item.time && <span>• {item.time}</span>}
                     </div>
 
+                    {/* Active Reminder Alert inside Card */}
+                    {!cd.isPast && !cd.isToday && cd.days <= (item.reminderDays || 7) && (
+                      <div className="mb-2 px-3 py-1.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-[10px] text-amber-700 dark:text-amber-300 font-bold flex items-center gap-1.5 animate-pulse-subtle">
+                        <Bell className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span>Reminder Alert: {cd.days} day{cd.days !== 1 ? 's' : ''} left! 🔔</span>
+                      </div>
+                    )}
+
                     {/* Countdown Display */}
                     <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 my-2">
                       {cd.isToday ? (
@@ -605,31 +816,37 @@ export const DatesView: React.FC = () => {
                           </span>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-around text-center">
+                        <div className="grid grid-cols-4 gap-1 text-center items-center">
                           <div>
-                            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">
+                            <span className="text-lg font-black text-slate-800 dark:text-white font-mono block">
                               {cd.days}
                             </span>
-                            <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                            <span className="text-[8px] uppercase font-bold text-slate-400 block">
                               Days
                             </span>
                           </div>
-                          <span className="text-slate-300 dark:text-slate-600 font-bold">:</span>
                           <div>
-                            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">
+                            <span className="text-lg font-black text-slate-800 dark:text-white font-mono block">
                               {cd.hours}
                             </span>
-                            <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                            <span className="text-[8px] uppercase font-bold text-slate-400 block">
                               Hours
                             </span>
                           </div>
-                          <span className="text-slate-300 dark:text-slate-600 font-bold">:</span>
                           <div>
-                            <span className="text-xl font-black text-slate-800 dark:text-white font-mono">
+                            <span className="text-lg font-black text-slate-800 dark:text-white font-mono block">
                               {cd.minutes}
                             </span>
-                            <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                            <span className="text-[8px] uppercase font-bold text-slate-400 block">
                               Mins
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-lg font-black text-rose-500 dark:text-rose-400 font-mono block animate-pulse">
+                              {cd.seconds}
+                            </span>
+                            <span className="text-[8px] uppercase font-bold text-slate-400 block">
+                              Secs
                             </span>
                           </div>
                         </div>
@@ -641,6 +858,76 @@ export const DatesView: React.FC = () => {
                       <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 my-2 italic">
                         "{item.description}"
                       </p>
+                    )}
+
+                    {/* Advanced Breakdown Toggle Button */}
+                    <div className="my-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBreakdownId(isBreakdownExpanded ? null : item.id)}
+                        className="w-full py-1 px-3 rounded-lg border border-rose-100 dark:border-slate-800 bg-rose-50/20 dark:bg-slate-800/40 text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50/55 dark:hover:bg-slate-800/80 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Clock className="w-3 h-3" />
+                        <span>{isBreakdownExpanded ? 'Hide Advanced Analytics' : 'Show Advanced Analytics & Depth'}</span>
+                      </button>
+                    </div>
+
+                    {/* Advanced Countdown Analytics & Progression Gauge */}
+                    {isBreakdownExpanded && (
+                      <div className="mt-3 p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/45 border border-slate-100 dark:border-slate-800 space-y-3 text-xs animate-in fade-in slide-in-from-top-2">
+                        {/* Progressive Gauge */}
+                        {item.isRecurring && (
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-[10px] text-slate-400">
+                              <span className="font-bold uppercase tracking-wider">Yearly Progress Cycle</span>
+                              <span className="font-mono text-rose-500">{yearProgress.toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                              <div
+                                className="h-full bg-rose-500 rounded-full transition-all duration-1000"
+                                style={{ width: `${yearProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Precise Math metrics */}
+                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50">
+                            <span className="text-slate-400 block">Total Weeks</span>
+                            <span className="font-black text-slate-800 dark:text-neutral-200 font-mono text-xs">{totalWeeks.toLocaleString()}</span>
+                          </div>
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50">
+                            <span className="text-slate-400 block">Total Hours</span>
+                            <span className="font-black text-slate-800 dark:text-neutral-200 font-mono text-xs">{totalHours.toLocaleString()}</span>
+                          </div>
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50">
+                            <span className="text-slate-400 block">Total Minutes</span>
+                            <span className="font-black text-slate-800 dark:text-neutral-200 font-mono text-xs">{totalMinutes.toLocaleString()}</span>
+                          </div>
+                          <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50">
+                            <span className="text-slate-400 block">Total Seconds</span>
+                            <span className="font-black text-rose-500 font-mono text-xs">{totalSeconds.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        {/* Future Occurrences */}
+                        <div className="space-y-1 border-t border-slate-200/50 dark:border-slate-800/50 pt-2">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Milestone Depth & Next Weekdays:
+                          </span>
+                          <div className="space-y-1 text-[10px]">
+                            {occurrences.map((occ, oIdx) => (
+                              <div key={oIdx} className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                <span className="font-semibold">Year {occ.year}</span>
+                                <span className="font-mono text-[9px] px-1.5 py-0.2 rounded bg-white dark:bg-slate-900 text-slate-500">
+                                  {occ.weekday}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     )}
 
                     {/* Expandable Gift & Celebration Notes */}
@@ -841,13 +1128,18 @@ export const DatesView: React.FC = () => {
                 <div className="flex items-center gap-4 justify-between sm:justify-end">
                   <div className="text-right">
                     {cd.isToday ? (
-                      <span className="text-xs font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-full">
-                        Today!
+                      <span className="text-xs font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-full animate-pulse">
+                        Today! 🎉
                       </span>
                     ) : (
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        {cd.days} days left
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5 select-none">
+                        <span className="text-xs font-black text-rose-500 dark:text-rose-400 font-mono">
+                          {cd.days}d {cd.hours}h {cd.minutes}m {cd.seconds}s
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">
+                          Remaining
+                        </span>
+                      </div>
                     )}
                   </div>
 

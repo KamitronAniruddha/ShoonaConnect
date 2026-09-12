@@ -215,6 +215,20 @@ export async function declineGameChallenge(coupleId: string, gameId: string): Pr
 }
 
 /**
+ * Cancel an outgoing game challenge.
+ */
+export async function cancelGameChallenge(coupleId: string, gameId: string): Promise<void> {
+  await supabase
+    .from('tictactoe_games')
+    .update({
+      status: 'completed',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', gameId)
+    .eq('couple_id', coupleId);
+}
+
+/**
  * Execute a move with full verification on board state, turn, and occupied cell.
  */
 export async function executeMove(

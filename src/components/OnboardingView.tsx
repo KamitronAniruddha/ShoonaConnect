@@ -41,6 +41,7 @@ import {
   HeartHandshake,
   XCircle,
   Radio,
+  X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { UserProfile, Couple } from '../types';
@@ -51,8 +52,11 @@ import { getLiveWorkingAppUrl } from '../utils/appUrl';
 import { ConnectHubModal } from './ConnectHubModal';
 import { InvitationPreviewModal } from './InvitationPreviewModal';
 import { PhotoLightboxModal } from './PhotoLightboxModal';
+import { FeatureShowcaseModal } from './FeatureShowcaseModal';
 import { InvitationData } from '../utils/invitationPdf';
 import { ZoomIn } from 'lucide-react';
+import { supabase, createSafeChannel } from '../lib/supabase';
+import { motion } from 'motion/react';
 
 // Curated avatar presets with high aesthetic appeal
 const AVATAR_PRESETS = [
@@ -106,6 +110,10 @@ export const OnboardingView: React.FC = () => {
     cancelPendingCouple,
     logout,
     updateUserProfileData,
+    pastRelationships,
+    loadingPastRelationships,
+    refreshPastRelationships,
+    restoreRelationship,
   } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
@@ -174,6 +182,7 @@ export const OnboardingView: React.FC = () => {
   const [showQrModal, setShowQrModal] = useState(false);
   const [showConnectHub, setShowConnectHub] = useState(false);
   const [showPdfInvitation, setShowPdfInvitation] = useState(false);
+  const [showFeatureShowcase, setShowFeatureShowcase] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -194,6 +203,105 @@ export const OnboardingView: React.FC = () => {
   // Photo lightbox modal state
   const [lightboxPhoto, setLightboxPhoto] = useState<{ url: string; title: string } | null>(null);
 
+  // Past Relationship Messaging & Reconnection State
+  const [selectedPastCoupleForChat, setSelectedPastCoupleForChat] = useState<Couple | null>(null);
+  const [expandedTimelines, setExpandedTimelines] = useState<Record<string, boolean>>({});
+  const [pastMessages, setPastMessages] = useState<any[]>([]);
+  const [loadingPastMessages, setLoadingPastMessages] = useState(false);
+  const [pastInputText, setPastInputText] = useState('');
+  const [isSendingPastMessage, setIsSendingPastMessage] = useState(false);
+  const [reconnectError, setReconnectError] = useState<string | null>(null);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const pastChatEndRef = useRef<HTMLDivElement>(null);
+
+  // Load and subscribe to past messages
+  useEffect(() => {
+    if (!selectedPastCoupleForChat) {
+      setPastMessages([]);
+      return;
+    }
+
+    const fetchPastMsgs = async () => {
+      setLoadingPastMessages(true);
+      const { data, error: err } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('couple_id', selectedPastCoupleForChat.id)
+        .order('created_at', { ascending: true });
+
+      if (!err && data) {
+        setPastMessages(data);
+      }
+      setLoadingPastMessages(false);
+      setTimeout(() => pastChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    };
+
+    fetchPastMsgs();
+
+    const channel = createSafeChannel(`past_messages_onboarding:${selectedPastCoupleForChat.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `couple_id=eq.${selectedPastCoupleForChat.id}` },
+        (payload) => {
+          if (payload.new) {
+            setPastMessages((prev) => {
+              if (prev.some((m) => m.id === payload.new.id)) return prev;
+              return [...prev, payload.new];
+            });
+            setTimeout(() => pastChatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedPastCoupleForChat]);
+
+  const handleSendPastMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPastCoupleForChat || !pastInputText.trim() || isSendingPastMessage || !currentUser) return;
+
+    setIsSendingPastMessage(true);
+    const textToSend = pastInputText.trim();
+    setPastInputText('');
+
+    try {
+      const { error: sendErr } = await supabase.from('messages').insert({
+        couple_id: selectedPastCoupleForChat.id,
+        sender_id: currentUser.uid,
+        sender_name: userProfile?.nickname || userProfile?.displayName || 'Me',
+        sender_photo: userProfile?.photoURL,
+        text: textToSend,
+        type: 'text',
+        created_at: new Date().toISOString()
+      });
+
+      if (sendErr) {
+        console.error('Failed to send past relationship message:', sendErr);
+      }
+    } catch (err) {
+      console.error('Error sending past relationship message:', err);
+    } finally {
+      setIsSendingPastMessage(false);
+    }
+  };
+
+  const handleExecuteReconnect = async (pastCoupleId: string) => {
+    setIsReconnecting(true);
+    setReconnectError(null);
+    try {
+      await restoreRelationship(pastCoupleId);
+      setSelectedPastCoupleForChat(null);
+    } catch (err: any) {
+      console.error('Failed to restore relationship:', err);
+      setReconnectError(err.message || 'Failed to reconnect. Please try again.');
+    } finally {
+      setIsReconnecting(false);
+    }
+  };
+
   // Auto-search if code was pre-loaded
   useEffect(() => {
     if (pendingInviteCode && pendingInviteCode.length === 4) {
@@ -203,6 +311,18 @@ export const OnboardingView: React.FC = () => {
       }
     }
   }, [pendingInviteCode, userProfile?.displayName]);
+
+  // Load and refresh past relationships on mount
+  useEffect(() => {
+    refreshPastRelationships();
+  }, []);
+
+  // Auto-progress to connection choices if user already has profile details filled
+  useEffect(() => {
+    if (userProfile?.displayName && step === 'profile' && !isPendingCouple) {
+      setStep('connection_choice');
+    }
+  }, [userProfile?.displayName, isPendingCouple]);
 
   // Anniversary calculations
   const calculateDaysTogether = (dateStr?: string) => {
@@ -577,6 +697,14 @@ export const OnboardingView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowFeatureShowcase(true)}
+            className="px-3 py-2 rounded-2xl bg-gradient-to-r from-rose-500/10 to-pink-500/10 dark:from-rose-500/25 dark:to-pink-500/25 border border-rose-200/50 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400 hover:scale-105 hover:from-rose-500 hover:to-pink-500 hover:text-white hover:border-transparent transition-all flex items-center gap-1.5 cursor-pointer shadow-xs animate-pulse"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline">Tour Features</span>
+          </button>
           <button
             onClick={toggleTheme}
             className="p-2.5 rounded-2xl bg-white/90 dark:bg-[#150d1d] border border-slate-200/80 dark:border-rose-900/40 text-slate-600 dark:text-rose-300 hover:scale-105 transition-all cursor-pointer shadow-xs"
@@ -1512,6 +1640,134 @@ export const OnboardingView: React.FC = () => {
               </button>
             </div>
 
+            {/* Past Relationships Section */}
+            {pastRelationships && pastRelationships.length > 0 && (
+              <div className="space-y-4 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-rose-500 fill-rose-500/10 animate-pulse" />
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-neutral-200 uppercase tracking-wider">
+                    Past Shared Sanctuaries ({pastRelationships.length})
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Archived relationships that ended mutually are stored securely. You can chat with your past partner or instantly step back into your sanctuary.
+                </p>
+
+                <div className="space-y-3">
+                  {pastRelationships.map((pastCouple) => {
+                    const dissolvedAtStr = pastCouple.dissolvedAt ? new Date(pastCouple.dissolvedAt).toLocaleDateString() : '';
+                    
+                    let historyList: any[] = [];
+                    try {
+                      if (pastCouple.relationshipStory) {
+                        const parsed = JSON.parse(pastCouple.relationshipStory);
+                        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.history)) {
+                          historyList = parsed.history;
+                        }
+                      }
+                    } catch {
+                      // fallback
+                    }
+
+                    const isTimelineOpen = !!expandedTimelines[pastCouple.id];
+
+                    return (
+                      <div
+                        key={pastCouple.id}
+                        className="p-5 rounded-2xl bg-white dark:bg-neutral-900/60 border border-slate-200/80 dark:border-neutral-800/85 space-y-4 shadow-xs"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="space-y-1">
+                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                              <span>{pastCouple.coupleName || 'Our Shared Sanctuary'}</span>
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold uppercase tracking-wider shrink-0">
+                                Archived Mutually
+                              </span>
+                            </h4>
+                            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
+                              Dissolved on {dissolvedAtStr || 'Mutual Agreement'}. No data was deleted.
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPastCoupleForChat(pastCouple)}
+                              className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-700 dark:text-slate-200 transition-all flex items-center gap-1.5 cursor-pointer border border-slate-200/50 dark:border-neutral-700/50"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span>Message Partner</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleExecuteReconnect(pastCouple.id)}
+                              disabled={isReconnecting}
+                              className="px-3 py-2 text-xs font-bold rounded-xl bg-rose-500 hover:bg-rose-600 active:scale-95 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                            >
+                              {isReconnecting ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <Heart className="w-3.5 h-3.5 fill-white" />
+                                  <span>Reconnect</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Expandable History Timeline / Love Log */}
+                        <div className="border-t border-slate-100 dark:border-neutral-800/80 pt-3">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedTimelines(prev => ({ ...prev, [pastCouple.id]: !prev[pastCouple.id] }))}
+                            className="text-[11px] font-semibold text-rose-500 dark:text-rose-400 hover:underline flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <span>✨ {isTimelineOpen ? 'Hide' : 'View'} Love Story Timeline & Event Log ({historyList.length + 1})</span>
+                          </button>
+
+                          {isTimelineOpen && (
+                            <div className="mt-3 pl-2.5 border-l-2 border-dashed border-rose-300/40 dark:border-rose-900/30 space-y-4">
+                              {/* Initial creation point */}
+                              <div className="relative">
+                                <span className="absolute -left-[16px] top-1 w-2 h-2 rounded-full bg-emerald-400 ring-4 ring-emerald-500/20" />
+                                <div className="text-[11px] font-bold text-slate-800 dark:text-neutral-200">
+                                  ❤️ Sanctuary Founded
+                                </div>
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  Started shared love space on {pastCouple.createdAt ? new Date(pastCouple.createdAt).toLocaleDateString() : 'Initial Setup'}.
+                                </div>
+                              </div>
+
+                              {/* Interleaved events from the relationship_story JSON log */}
+                              {historyList.map((evt, idx) => {
+                                const isBreak = evt.type === 'breakup';
+                                return (
+                                  <div key={idx} className="relative">
+                                    <span className={`absolute -left-[16px] top-1 w-2 h-2 rounded-full ${isBreak ? 'bg-red-400 ring-4 ring-red-500/20' : 'bg-rose-400 ring-4 ring-rose-500/20'}`} />
+                                    <div className="text-[11px] font-bold text-slate-800 dark:text-neutral-200 flex items-center gap-1.5">
+                                      <span>{isBreak ? '💔 Mutually Paused' : '💖 Patched Up & Reconnected'}</span>
+                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-slate-400">
+                                        by {evt.byName || 'Partner'}
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                      Executed on {evt.date ? new Date(evt.date).toLocaleString() : 'Mutual Decision'}.
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => setStep('profile')}
@@ -2050,6 +2306,166 @@ export const OnboardingView: React.FC = () => {
           onClose={() => setLightboxPhoto(null)}
           imageUrl={lightboxPhoto.url}
           userName={lightboxPhoto.title}
+        />
+      )}
+
+      {/* Real-time Past Partner Dialogue Overlay */}
+      {selectedPastCoupleForChat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="w-full max-w-2xl h-[80vh] bg-slate-900 border border-neutral-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col text-neutral-100"
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-neutral-800 flex items-center justify-between bg-neutral-950/40">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                  <MessageCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    Dialogue with Past Partner
+                  </h3>
+                  <p className="text-[10px] text-neutral-400">
+                    Sanctuary: {selectedPastCoupleForChat.coupleName || 'Our Shared Space'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleExecuteReconnect(selectedPastCoupleForChat.id)}
+                  disabled={isReconnecting}
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  {isReconnecting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Heart className="w-3 h-3 fill-white" />
+                      <span>Reconnect Now</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPastCoupleForChat(null)}
+                  className="p-1.5 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[#0a0709]">
+              {reconnectError && (
+                <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/20 text-red-300 text-xs flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{reconnectError}</span>
+                </div>
+              )}
+
+              {loadingPastMessages ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-2 text-neutral-400">
+                    <Loader2 className="w-6 h-6 animate-spin text-rose-500" />
+                    <span className="text-xs">Decrypting past dialogue stream...</span>
+                  </div>
+                </div>
+              ) : pastMessages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4 space-y-2">
+                  <MessageCircle className="w-8 h-8 text-neutral-600" />
+                  <p className="text-xs text-neutral-400">
+                    No past messages on record. Send a message to re-open the lines of communication.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pastMessages.map((m) => {
+                    const isMe = m.sender_id === currentUser.uid;
+                    return (
+                      <div
+                        key={m.id}
+                        className={`flex items-start gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}
+                      >
+                        {!isMe && m.sender_photo && (
+                          <img
+                            src={m.sender_photo}
+                            alt={m.sender_name}
+                            referrerPolicy="no-referrer"
+                            className="w-8 h-8 rounded-lg object-cover border border-neutral-800 mt-0.5"
+                          />
+                        )}
+                        <div className="space-y-1 max-w-[70%]">
+                          <div className={`flex items-center gap-1.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                            <span className="text-[10px] font-semibold text-neutral-400">
+                              {isMe ? 'You' : m.sender_name}
+                            </span>
+                            <span className="text-[8px] text-neutral-500">
+                              {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </span>
+                          </div>
+                          <div
+                            className={`px-3.5 py-2 rounded-2xl text-xs leading-relaxed ${
+                              isMe
+                                ? 'bg-rose-600/20 border border-rose-500/20 text-rose-100 rounded-tr-none'
+                                : 'bg-neutral-800 border border-neutral-700 text-neutral-200 rounded-tl-none'
+                            }`}
+                          >
+                            {m.text}
+                          </div>
+                        </div>
+                        {isMe && m.sender_photo && (
+                          <img
+                            src={m.sender_photo}
+                            alt={m.sender_name}
+                            referrerPolicy="no-referrer"
+                            className="w-8 h-8 rounded-lg object-cover border border-neutral-800 mt-0.5"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div ref={pastChatEndRef} />
+                </div>
+              )}
+            </div>
+
+            {/* Input form */}
+            <form onSubmit={handleSendPastMessage} className="p-4 border-t border-neutral-800 flex gap-2 bg-neutral-950/20">
+              <input
+                type="text"
+                value={pastInputText}
+                onChange={(e) => setPastInputText(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 px-4 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-rose-500"
+              />
+              <button
+                type="submit"
+                disabled={!pastInputText.trim() || isSendingPastMessage}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center"
+              >
+                {isSendingPastMessage ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Feature Showcase Tour */}
+      {showFeatureShowcase && (
+        <FeatureShowcaseModal
+          isOpen={showFeatureShowcase}
+          onClose={() => setShowFeatureShowcase(false)}
+          activeTheme={selectedTheme}
         />
       )}
     </div>

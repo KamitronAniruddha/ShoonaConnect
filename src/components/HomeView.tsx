@@ -795,6 +795,37 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
       {/* Saathi Achievements 69 Badges Banner */}
       <SanctuaryAchievementsCard onOpenAchievements={() => setActiveTab('achievements')} />
 
+      {/* Our Future Dreams Banner */}
+      <div
+        onClick={() => setActiveTab('dreams')}
+        className="p-5 rounded-3xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 text-white shadow-lg hover:shadow-xl transition-all cursor-pointer group flex flex-col sm:flex-row items-center justify-between gap-4"
+      >
+        <div className="flex items-center gap-4 text-center sm:text-left">
+          <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md p-0.5 shadow-md group-hover:scale-105 transition-transform flex-shrink-0 flex items-center justify-center text-2xl">
+            💍
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider mb-1">
+              <Sparkles className="w-3 h-3 text-amber-200 fill-amber-200" />
+              Marriage, Home, Intimacy & Baby Goals
+            </div>
+            <h3 className="text-base sm:text-lg font-bold font-fraunces text-white">
+              Our Future Dreams & Relationship Aspirations 💕
+            </h3>
+            <p className="text-xs text-rose-100">
+              Manifest wedding vows, dream sanctuary, intimate desires, baby plans & custom milestones together.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="px-4 py-2.5 rounded-xl bg-white text-rose-600 hover:bg-rose-50 text-xs font-extrabold transition-all shadow-md flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
+        >
+          <Sparkles className="w-4 h-4" /> Explore Dreams
+        </button>
+      </div>
+
       {/* Couple Games & Pet Mochi Banner (Featured New System) */}
       <div
         onClick={() => setActiveTab('games')}

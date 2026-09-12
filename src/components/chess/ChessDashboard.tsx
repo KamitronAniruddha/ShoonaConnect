@@ -26,9 +26,12 @@ import {
   sendChessChallenge,
   acceptChessChallenge,
   declineChessChallenge,
+  cancelChessChallenge,
   listenToChessGames,
   listenToChessChallenges,
 } from '../../utils/chessService';
+import { WaitingForCoupleModal } from '../WaitingForCoupleModal';
+import { supabase, createSafeChannel, sendRealtimeBroadcast } from '../../lib/supabase';
 import type {
   ChessGame,
   ChessChallenge,
@@ -52,6 +55,7 @@ export const ChessDashboard: React.FC<ChessDashboardProps> = ({ onBackToGames })
 
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [sentChallengeId, setSentChallengeId] = useState<string | null>(null);
 
   // Synced games and challenges
   const [recentGames, setRecentGames] = useState<ChessGame[]>([]);
@@ -79,14 +83,24 @@ export const ChessDashboard: React.FC<ChessDashboardProps> = ({ onBackToGames })
       setPendingChallenges(list);
 
       // Play alert sound if someone challenged us
-      const incoming = list.find((c) => c.challengedId === userProfile?.uid);
+      const incoming = list.find((c) => c.challengedId === userProfile?.uid && c.status === 'pending');
       if (incoming) {
         playChessChallengeSound();
+      }
+
+      // Check if our sent challenge was accepted
+      if (sentChallengeId) {
+        const sent = list.find((c) => c.id === sentChallengeId);
+        if (sent && sent.status === 'accepted' && sent.gameId) {
+          setActiveGameId(sent.gameId);
+          setViewMode('playing');
+          setSentChallengeId(null);
+        }
       }
     });
 
     return () => unsubscribe();
-  }, [coupleId, userProfile?.uid]);
+  }, [coupleId, userProfile?.uid, sentChallengeId]);
 
   // Calculate Head-to-Head stats between user and partner
   const stats = React.useMemo(() => {
@@ -123,7 +137,7 @@ export const ChessDashboard: React.FC<ChessDashboardProps> = ({ onBackToGames })
     if (!coupleId || !userProfile) return;
     const partnerUid = partnerProfile?.uid || 'solo_partner';
 
-    await sendChessChallenge(
+    const challengeId = await sendChessChallenge(
       coupleId,
       {
         uid: userProfile.uid,
@@ -135,6 +149,35 @@ export const ChessDashboard: React.FC<ChessDashboardProps> = ({ onBackToGames })
       preferredColor,
       isCasual
     );
+
+    setSentChallengeId(challengeId);
+
+    // Broadcast realtime notification to partner safely using the helper
+    if (partnerProfile) {
+      sendRealtimeBroadcast(`partner_notifications:${coupleId}`, 'game_invitation', {
+        hostUid: userProfile.uid,
+        hostName: userProfile.displayName || 'Your Sweetheart',
+        gameType: 'chess',
+        gameId: challengeId,
+        title: `Chess Challenge ♟️ (${timeControl.label || 'Casual'})`,
+      });
+    }
+  };
+
+  // Handle Cancel Challenge
+  const handleCancelChallenge = async () => {
+    if (!sentChallengeId || !coupleId || !userProfile) return;
+    try {
+      await cancelChessChallenge(coupleId, sentChallengeId);
+      sendRealtimeBroadcast(`partner_notifications:${coupleId}`, 'game_invitation_cancelled', {
+        cancelledBy: userProfile.uid,
+        cancelledByName: userProfile.displayName || 'Host',
+        gameId: sentChallengeId,
+      });
+    } catch (err) {
+      console.warn('Error cancelling chess challenge:', err);
+    }
+    setSentChallengeId(null);
   };
 
   // Handle start AI Game
@@ -560,6 +603,18 @@ export const ChessDashboard: React.FC<ChessDashboardProps> = ({ onBackToGames })
           onSendChallenge={handleSendChallenge}
           onStartAIGame={handleStartAIGame}
           onClose={() => setShowChallengeModal(false)}
+        />
+      )}
+
+      {/* Waiting for Couple Modal Overlay */}
+      {sentChallengeId && (
+        <WaitingForCoupleModal
+          gameTitle="Chess Match Challenge ♟️💕"
+          gameSubtitle={`Challenging ${partnerProfile?.displayName || 'Partner'}! Waiting for them to accept & join...`}
+          gameType="chess"
+          gameId={sentChallengeId}
+          onCancelGame={handleCancelChallenge}
+          onClose={() => setSentChallengeId(null)}
         />
       )}
     </div>

@@ -591,6 +591,7 @@ export type ActiveTab =
   | 'vault'
   | 'daily'
   | 'bucket'
+  | 'dreams'
   | 'timeline'
   | 'settings'
   | 'features'

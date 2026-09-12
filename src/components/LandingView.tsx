@@ -66,6 +66,26 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, setActiveT
   // Check URL params or localStorage for pending couple invite code
   const [inviteCode, setInviteCode] = useState<string | null>(null);
 
+  // New Interactive Feature Showcase states
+  const [showcaseTab, setShowcaseTab] = useState<'pet' | 'games' | 'countdown' | 'letters' | 'questions' | 'vault'>('pet');
+  const [showcasePetLove, setShowcasePetLove] = useState(85);
+  const [showcasePetClicks, setShowcasePetClicks] = useState(0);
+  const [showcaseTttGrid, setShowcaseTttGrid] = useState<(string | null)[]>(Array(9).fill(null));
+  const [showcaseTttTurn, setShowcaseTttTurn] = useState<'X' | 'O'>('X');
+  const [showcaseLetterSealed, setShowcaseLetterSealed] = useState(true);
+  const [showcaseQuestionAnswer, setShowcaseQuestionAnswer] = useState('');
+  const [showcaseQuestionSubmitted, setShowcaseQuestionSubmitted] = useState(false);
+
+  // Live ticking milliseconds state for showcase countdown
+  const [showcaseMs, setShowcaseMs] = useState(0);
+
+  useEffect(() => {
+    const msInterval = setInterval(() => {
+      setShowcaseMs(Math.floor(Math.random() * 1000));
+    }, 80);
+    return () => clearInterval(msInterval);
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -93,6 +113,590 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, setActiveT
     'What is our dream trip to take together in the next 12 months?',
     'What outfit of mine is your absolute secret favorite?',
   ];
+
+  // Check Tic Tac Toe winner helper
+  const checkShowcaseTttWinner = (grid: (string | null)[]) => {
+    const lines = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+    for (let i = 0; i < lines.length; i++) {
+      const [a, b, c] = lines[i];
+      if (grid[a] && grid[a] === grid[b] && grid[a] === grid[c]) {
+        return grid[a];
+      }
+    }
+    if (grid.every(cell => cell !== null)) return 'draw';
+    return null;
+  };
+
+  const showcaseTttWinner = checkShowcaseTttWinner(showcaseTttGrid);
+
+  const handleShowcaseTttClick = (idx: number) => {
+    if (showcaseTttGrid[idx] || showcaseTttWinner) return;
+    const newGrid = [...showcaseTttGrid];
+    newGrid[idx] = showcaseTttTurn;
+    setShowcaseTttGrid(newGrid);
+    setShowcaseTttTurn(showcaseTttTurn === 'X' ? 'O' : 'X');
+    
+    // Play light confetti on turn
+    confetti({ particleCount: 8, spread: 30, origin: { y: 0.65 } });
+  };
+
+  const resetShowcaseTtt = () => {
+    setShowcaseTttGrid(Array(9).fill(null));
+    setShowcaseTttTurn('X');
+  };
+
+  // Custom photo list for Simulated Vault Showcase
+  const [vaultPhotos, setVaultPhotos] = useState([
+    { id: 1, src: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&q=80&w=400', date: 'Jul 24, 2026', caption: 'Cozy beach sunset 🌅' },
+    { id: 2, src: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80&w=400', date: 'Aug 12, 2026', caption: 'First anniversary coffee date ☕' },
+  ]);
+
+  const addSimulatedVaultPhoto = () => {
+    const caps = [
+      'Strolling in the botanical gardens 🌸',
+      'Cooking home-made pasta night! 🍝',
+      'Snuggling on a rainy Sunday morning 🌧️💝',
+      'Our secret ice-cream midnight escape 🍦',
+    ];
+    const pics = [
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=400',
+      'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=400',
+    ];
+    const newPic = {
+      id: Date.now(),
+      src: pics[Math.floor(Math.random() * pics.length)],
+      date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      caption: caps[Math.floor(Math.random() * caps.length)],
+    };
+    setVaultPhotos([newPic, ...vaultPhotos]);
+    confetti({ particleCount: 15, spread: 40, origin: { y: 0.6 } });
+  };
+
+  const renderInteractiveShowcase = () => {
+    return (
+      <div className="bg-[#120a10] border border-white/5 rounded-[32px] p-4 sm:p-8 shadow-2xl relative overflow-hidden">
+        {/* Subtle decorative mesh background */}
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#ff3377]/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-purple-600/5 blur-[100px] rounded-full pointer-events-none" />
+
+        {/* Head Badge */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-white/5 pb-6 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#ff3377]/10 border border-[#ff3377]/20 text-[#ff4d8d] text-[10px] font-bold tracking-wider uppercase mb-2">
+              <Sparkles className="w-3 h-3" /> Live Features Walkthrough
+            </div>
+            <h3 className="text-2xl font-extrabold font-fraunces text-white">
+              Explore Our Real Couples Features
+            </h3>
+            <p className="text-xs text-neutral-400">
+              Test out the exact mechanics that bring couples closer together every single day.
+            </p>
+          </div>
+          
+          {/* Made for Couples by Aniruddha Credits Card */}
+          <div className="bg-gradient-to-r from-[#ff3377]/15 to-[#ff5c8a]/5 border border-[#ff3377]/30 rounded-2xl p-3 px-4 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#ff3377]/20 flex items-center justify-center text-xs animate-pulse font-bold text-[#ff4d8d]">
+              💖
+            </div>
+            <div>
+              <div className="text-[10px] uppercase font-black text-rose-300 tracking-widest">
+                PREMIUM COMPANION
+              </div>
+              <div className="text-xs font-bold text-white">
+                Made for Couples by <span className="text-[#ff4d8d] font-extrabold">Aniruddha</span> & Best
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Outer Tabs Grid and Interactive Frame */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          {/* Left Menu Selection (5 Cols) */}
+          <div className="lg:col-span-5 flex flex-col gap-2.5">
+            {[
+              {
+                id: 'pet',
+                title: 'Fox Companion Mochi 🦊',
+                tag: 'Virtual Pet Parenting',
+                desc: 'Adopt, level up, and care for a shared pet in real-time. Both partners coordinate meals & playtime.'
+              },
+              {
+                id: 'games',
+                title: 'Couples Games Lounge 🎮',
+                tag: 'Handshake Multiplay',
+                desc: 'Play Tic-Tac-Toe, Chess & Number Guess with instant challenge push alerts and zero latency.'
+              },
+              {
+                id: 'countdown',
+                title: 'Precise Countdown Hub 🔔',
+                tag: 'To-The-Second Tracking',
+                desc: 'Ticking countdowns down to the millisecond with active reminder bars and progress bars.'
+              },
+              {
+                id: 'letters',
+                title: 'Sealed Future Letters ✉️',
+                tag: 'Wax-Sealed Anticipation',
+                desc: 'Write time-locked messages that remain sealed under golden wax stamps until your chosen anniversary.'
+              },
+              {
+                id: 'questions',
+                title: 'Double-Blind Prompts 💭',
+                tag: 'Synchronized Revelations',
+                desc: 'Thoughtful couple questions where answers are locked and stay secret until both partners respond!'
+              },
+              {
+                id: 'vault',
+                title: 'Encrypted Memory Vault 🔒',
+                tag: 'Secure Shared Scraps',
+                desc: 'Securely upload milestone memories, private passwords, and anniversary photos behind PIN locks.'
+              }
+            ].map((tab) => {
+              const isSelected = showcaseTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setShowcaseTab(tab.id as any)}
+                  className={`p-4 rounded-2xl border text-left transition-all duration-300 relative group cursor-pointer ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-[#ff3377]/15 to-[#241421] border-[#ff3377]/50 shadow-md shadow-pink-500/5'
+                      : 'bg-[#150f14] hover:bg-[#1b1219] border-white/5 hover:border-white/10'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[9px] font-bold uppercase tracking-widest ${isSelected ? 'text-[#ff4d8d]' : 'text-neutral-400'}`}>
+                      {tab.tag}
+                    </span>
+                    {isSelected && <span className="text-[10px] text-[#ff4d8d] animate-ping">●</span>}
+                  </div>
+                  <h4 className={`text-sm sm:text-base font-bold font-fraunces ${isSelected ? 'text-white' : 'text-neutral-300 group-hover:text-white'}`}>
+                    {tab.title}
+                  </h4>
+                  <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                    {tab.desc}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right Live Interactive Simulator Box (7 Cols) */}
+          <div className="lg:col-span-7 rounded-3xl bg-[#090508] border border-white/5 p-6 flex flex-col justify-between min-h-[460px] relative shadow-inner">
+            {/* Simulator Watermark */}
+            <div className="absolute top-3 right-4 text-[9px] text-neutral-600 font-bold tracking-widest uppercase pointer-events-none select-none">
+              Live Mockup Simulator ⚡
+            </div>
+
+            {/* Dynamic tab contents */}
+            <div className="flex-1 flex flex-col justify-center">
+              {/* TAB 1: FOX COMPANION MOCHI */}
+              {showcaseTab === 'pet' && (
+                <div className="text-center space-y-6">
+                  <div className="space-y-2">
+                    <div className="text-6xl animate-bounce duration-1000 mt-2 select-none">🦊</div>
+                    <h4 className="text-xl font-black font-fraunces text-white">Mochi (LVL 4)</h4>
+                    <p className="text-xs text-rose-300 font-medium">Affection State: {showcasePetLove}%</p>
+                  </div>
+
+                  {/* Level gauge */}
+                  <div className="max-w-md mx-auto space-y-1">
+                    <div className="flex justify-between text-[10px] font-bold text-neutral-400">
+                      <span>NEXT LEVEL PROGRESS</span>
+                      <span>{showcasePetLove}/100 XP</span>
+                    </div>
+                    <div className="w-full bg-white/5 border border-white/10 rounded-full h-3 overflow-hidden p-0.5">
+                      <div
+                        className="bg-gradient-to-r from-amber-400 to-[#ff3377] h-full rounded-full transition-all duration-300"
+                        style={{ width: `${showcasePetLove}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Feed Logs simulation */}
+                  <div className="bg-white/5 rounded-2xl p-3 border border-white/5 max-w-sm mx-auto text-[11px] text-neutral-300 space-y-1 text-left">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs">🍓</span>
+                      <span><strong>Thomas:</strong> Fed a Sweet Berry (+5 affection)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 opacity-60">
+                      <span className="text-xs">🎾</span>
+                      <span><strong>Deborah:</strong> Played ball with Mochi (+3 affection)</span>
+                    </div>
+                  </div>
+
+                  {/* Interactions */}
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowcasePetLove(prev => Math.min(100, prev + 5));
+                        setShowcasePetClicks(prev => prev + 1);
+                        confetti({ particleCount: 15, spread: 30, origin: { y: 0.6 } });
+                      }}
+                      className="px-4 py-2 bg-[#ff3377] hover:bg-[#ff4d8d] text-white rounded-full font-bold text-xs transition-all active:scale-95 shadow-lg shadow-pink-500/20 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>🍖 Feed Snack</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowcasePetLove(prev => Math.min(100, prev + 3));
+                        setShowcasePetClicks(prev => prev + 1);
+                        confetti({ particleCount: 20, spread: 45, colors: ['#ff4d8d', '#ff73a1'], origin: { y: 0.6 } });
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-110 text-white rounded-full font-bold text-xs transition-all active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>❤️ Pet Mochi</span>
+                    </button>
+                    {showcasePetLove === 100 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowcasePetLove(85);
+                          setShowcasePetClicks(0);
+                        }}
+                        className="px-2.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-xs font-semibold"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: COUPLES GAMES LOBBY */}
+              {showcaseTab === 'games' && (
+                <div className="space-y-4">
+                  <div className="text-center space-y-1">
+                    <h5 className="text-sm font-bold text-white font-fraunces flex items-center justify-center gap-2">
+                      <Gamepad2 className="w-4 h-4 text-[#ff4d8d]" /> Play Live Tic-Tac-Toe
+                    </h5>
+                    <p className="text-[11px] text-neutral-400">
+                      {showcaseTttWinner
+                        ? showcaseTttWinner === 'draw'
+                          ? "It's a draw! 🤝"
+                          : `Player ${showcaseTttWinner} Won! 🎉`
+                        : `Turn: Player ${showcaseTttTurn}`}
+                    </p>
+                  </div>
+
+                  {/* 3x3 Grid */}
+                  <div className="grid grid-cols-3 gap-2.5 max-w-[200px] mx-auto pt-2">
+                    {showcaseTttGrid.map((val, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleShowcaseTttClick(idx)}
+                        className={`w-14 h-14 rounded-xl border flex items-center justify-center text-lg font-black font-mono transition-all active:scale-95 ${
+                          val === 'X'
+                            ? 'bg-[#ff3377]/10 border-[#ff3377]/40 text-[#ff4d8d]'
+                            : val === 'O'
+                            ? 'bg-purple-500/10 border-purple-500/40 text-purple-300'
+                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-transparent'
+                        }`}
+                      >
+                        {val || '-'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Reset Game button */}
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={resetShowcaseTtt}
+                      className="px-4 py-1.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-full font-bold text-xs"
+                    >
+                      Reset Board
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: countdowns with milliseconds */}
+              {showcaseTab === 'countdown' && (
+                <div className="text-center space-y-6">
+                  <div className="space-y-1">
+                    <div className="text-[10px] uppercase font-bold text-[#ff4d8d] tracking-widest flex items-center justify-center gap-1">
+                      <Bell className="w-3 h-3" /> Active Celebration Alert
+                    </div>
+                    <h4 className="text-xl font-bold font-fraunces text-white">💘 Thomas & Deborah's 1-Year Milestone</h4>
+                  </div>
+
+                  {/* High Precision Milliseconds ticking panel */}
+                  <div className="grid grid-cols-5 gap-2 max-w-md mx-auto">
+                    {[
+                      { label: 'Days', val: 184 },
+                      { label: 'Hours', val: 12 },
+                      { label: 'Mins', val: 45 },
+                      { label: 'Secs', val: 23 },
+                      { label: 'Ms', val: showcaseMs }
+                    ].map((cell, idx) => (
+                      <div key={idx} className="p-3 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center">
+                        <span className={`text-lg sm:text-2xl font-black font-mono ${cell.label === 'Ms' || cell.label === 'Secs' ? 'text-[#ff4d8d]' : 'text-white'}`}>
+                          {cell.label === 'Ms' ? String(cell.val).padStart(3, '0') : String(cell.val).padStart(2, '0')}
+                        </span>
+                        <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-1">{cell.label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Interactive reminder button */}
+                  <div className="max-w-xs mx-auto p-3.5 rounded-2xl bg-[#190f17] border border-[#ff3377]/30 flex items-center justify-between text-xs text-rose-200">
+                    <div className="flex items-center gap-2 font-bold">
+                      <Heart className="w-4 h-4 fill-rose-400 text-rose-400 animate-pulse" />
+                      <span>Reminder Window: 7 Days</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-black bg-rose-500/20 text-rose-300 px-2.5 py-1 rounded-full">
+                      ALERT ACTIVE 🔔
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: sealed wax letters */}
+              {showcaseTab === 'letters' && (
+                <div className="text-center space-y-4">
+                  {showcaseLetterSealed ? (
+                    <div className="space-y-6">
+                      <div className="w-24 h-24 mx-auto bg-gradient-to-br from-amber-900 to-amber-950 rounded-full flex items-center justify-center border-4 border-amber-600/40 relative shadow-lg select-none cursor-pointer group hover:scale-105 transition-all">
+                        {/* Seal Emblem */}
+                        <span className="text-3xl text-amber-500 font-bold group-hover:animate-ping absolute">⚜️</span>
+                        <span className="text-3xl text-amber-400 font-bold relative z-10">⚜️</span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h4 className="text-base font-bold text-white">Wax-Sealed Time Capsule Letter</h4>
+                        <p className="text-xs text-neutral-400 max-w-sm mx-auto">
+                          Click the golden seal below to break it and peek inside this secret love letter!
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowcaseLetterSealed(false);
+                          confetti({ particleCount: 30, spread: 60, colors: ['#ff4d8d', '#ffbb33'], origin: { y: 0.6 } });
+                        }}
+                        className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-110 text-white rounded-full font-bold text-xs transition-all cursor-pointer shadow-lg active:scale-95"
+                      >
+                        Break Wax Seal 💌
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-6 rounded-2xl bg-[#ffeedd] text-[#4a2e1b] max-w-md mx-auto text-left shadow-2xl relative border-4 border-amber-700/20 font-serif select-none animate-fade-in">
+                      {/* Wax Stamp Watermark */}
+                      <div className="absolute top-4 right-4 text-xs font-black opacity-30 select-none">
+                        ⚜️ SEALED 2026
+                      </div>
+                      <div className="space-y-3 font-semibold">
+                        <p className="text-xs text-amber-900 font-bold uppercase tracking-wider">My Dearest,</p>
+                        <p className="text-sm italic leading-relaxed">
+                          "From the moment we connected in our special couple space, every day has felt complete. I can't wait to write a million more stories with you. You are my home. Forever yours."
+                        </p>
+                        <p className="text-xs text-right text-amber-900 font-black">— Thomas 💖</p>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-amber-900/10 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowcaseLetterSealed(true)}
+                          className="text-[10px] uppercase tracking-wider font-extrabold text-amber-800 hover:text-amber-950 underline"
+                        >
+                          Seal it back up
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 5: double blind questions */}
+              {showcaseTab === 'questions' && (
+                <div className="max-w-md mx-auto space-y-4">
+                  <div className="text-center space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-[#ff4d8d] tracking-widest">
+                      Double-Blind Connection
+                    </span>
+                    <h4 className="text-base font-bold text-white font-fraunces">
+                      "If we could instantly teleport anywhere in the world right now, where are we going?"
+                    </h4>
+                  </div>
+
+                  {!showcaseQuestionSubmitted ? (
+                    <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/5">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-neutral-400 uppercase font-bold block">
+                          Your Answer (Hidden from partner until you submit)
+                        </label>
+                        <input
+                          type="text"
+                          value={showcaseQuestionAnswer}
+                          onChange={(e) => setShowcaseQuestionAnswer(e.target.value)}
+                          placeholder="Type your secret escape here..."
+                          className="w-full bg-[#150f14] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ff3377]"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 p-2.5 bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-300 rounded-xl">
+                        <Lock className="w-3.5 h-3.5 shrink-0" />
+                        <span>Partner has already answered! Answer locked until you submit.</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!showcaseQuestionAnswer.trim()) return;
+                          setShowcaseQuestionSubmitted(true);
+                          confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
+                        }}
+                        disabled={!showcaseQuestionAnswer.trim()}
+                        className="w-full py-2 bg-[#ff3377] hover:bg-[#ff4d8d] disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer"
+                      >
+                        Submit & Reveal Answers 🔑
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Revealed answers */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-[#ff3377]/10 border border-[#ff3377]/30 rounded-xl space-y-1">
+                          <span className="text-[9px] font-bold text-rose-400 block uppercase">You Answered</span>
+                          <p className="text-xs font-bold text-white italic">"{showcaseQuestionAnswer}"</p>
+                        </div>
+                        <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl space-y-1">
+                          <span className="text-[9px] font-bold text-purple-400 block uppercase">Partner Answered</span>
+                          <p className="text-xs font-bold text-white italic">"A cozy overwater bungalow in the Maldives with starry nights! 🌴✨"</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 p-2 px-3 rounded-xl text-center text-xs font-bold flex items-center justify-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>Question Synced! Streak increases to 294 Days! 🔥</span>
+                      </div>
+
+                      <div className="text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowcaseQuestionAnswer('');
+                            setShowcaseQuestionSubmitted(false);
+                          }}
+                          className="text-[10px] font-extrabold text-neutral-400 hover:text-white underline"
+                        >
+                          Type another answer
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 6: secure memories vault */}
+              {showcaseTab === 'vault' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="text-sm font-bold text-white font-fraunces flex items-center gap-1.5">
+                        <Lock className="w-4 h-4 text-amber-400" /> Thomas & Deborah's Shared Vault
+                      </h5>
+                      <p className="text-[10px] text-neutral-400">Isolated 100% Google Cloud Secure Encryption</p>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={addSimulatedVaultPhoto}
+                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full text-[10px] font-bold text-[#ff4d8d] cursor-pointer"
+                    >
+                      + Add Simulated Photo 📸
+                    </button>
+                  </div>
+
+                  {/* Simulated Polaroids row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 pt-2">
+                    {vaultPhotos.map((photo) => (
+                      <div key={photo.id} className="bg-white p-2 rounded-lg shadow-xl border border-neutral-200 transform rotate-[-2deg] hover:rotate-[0deg] transition-all duration-300">
+                        <div className="w-full h-24 overflow-hidden rounded-md bg-neutral-100">
+                          <img
+                            src={photo.src}
+                            alt={photo.caption}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                        <div className="mt-2 text-left">
+                          <p className="text-[10px] font-black text-neutral-800 leading-tight truncate">
+                            {photo.caption}
+                          </p>
+                          <span className="text-[8px] text-neutral-400 font-bold block mt-0.5">
+                            {photo.date}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center p-4 text-center select-none bg-white/5 opacity-60">
+                      <span className="text-xl">🔒</span>
+                      <span className="text-[8px] font-bold uppercase text-neutral-400 mt-1">End-To-End Private</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Simulated Mobile Device frame info */}
+            <div className="pt-4 border-t border-white/5 flex items-center justify-between text-[10px] text-neutral-500 font-bold">
+              <span>ACTIVE SESSION: THOMAS & DEBORAH</span>
+              <span className="text-[#ff4d8d]">SYNCED ON AIRPLANE NETWORK 📡</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (isInsideApp) {
+    return (
+      <div className="min-h-screen bg-[#0d090c] text-neutral-100 font-sans selection:bg-[#ff3377] selection:text-white pb-16">
+        {/* Navigation Bar inside App */}
+        <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#0d090c]/85 border-b border-white/5 mb-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#ff3377] to-[#ff5c8a] flex items-center justify-center p-0.5 shadow-lg shadow-pink-500/20">
+                <div className="w-full h-full bg-[#120a10] rounded-[14px] flex items-center justify-center">
+                  <Heart className="w-5 h-5 text-[#ff4d8d] fill-[#ff4d8d]" />
+                </div>
+              </div>
+              <span className="text-xl sm:text-2xl font-extrabold font-fraunces tracking-tight text-white">
+                Shoona<span className="text-[#ff4d8d]">Connect</span> Showcase
+              </span>
+            </div>
+
+            {/* Back action */}
+            {setActiveTab && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('home')}
+                className="px-5 py-2.5 rounded-full bg-[#ff3377]/10 hover:bg-[#ff3377]/20 text-white border border-[#ff3377]/30 text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95"
+              >
+                <span>Back to Sanctuary</span>
+                <ArrowRight className="w-4 h-4 text-[#ff4d8d]" />
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Feature Showcase container */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {renderInteractiveShowcase()}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0d090c] text-neutral-100 font-sans selection:bg-[#ff3377] selection:text-white">
@@ -481,102 +1085,10 @@ export const LandingView: React.FC<LandingViewProps> = ({ onEnterApp, setActiveT
         </div>
       </section>
 
-      {/* 4. FEATURES SECTION: BENTO GRID (Exact 2.png & 3.png) */}
+      {/* 4. FEATURES SECTION: INTERACTIVE LIVE SHOWCASE */}
       <section id="features" className="py-24 sm:py-32 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-          {/* Header */}
-          <div className="text-center space-y-4 max-w-3xl mx-auto">
-            <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#ff3377]/15 border border-[#ff3377]/30 text-[#ff4d8d] text-xs font-bold uppercase tracking-widest">
-              FEATURES
-            </div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-fraunces text-white tracking-tight">
-              Everything you need to nurture your relationship
-            </h2>
-            <p className="text-base sm:text-lg text-neutral-300 leading-relaxed">
-              Designed by couples, for couples. Every feature helps you stay in sync, build intimacy, and create lasting memories together.
-            </p>
-          </div>
-
-          {/* 8 Bento Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                title: 'Daily Questions',
-                desc: '365 thoughtful relationship questions, from fun icebreakers to deep conversations. Answer together each day and keep communication intentional and meaningful.',
-                icon: MessageCircle,
-                iconColor: 'text-rose-400',
-                iconBg: 'bg-rose-500/10 border-rose-500/20',
-              },
-              {
-                title: '7 Game Types',
-                desc: 'Play Would You Rather, Sketch & Guess, Never Have I Ever, How Well Do You Know Me, Trivia & more. 1000+ questions with new content added regularly.',
-                icon: Gamepad2,
-                iconColor: 'text-amber-400',
-                iconBg: 'bg-amber-500/10 border-amber-500/20',
-              },
-              {
-                title: 'Shared Memories',
-                desc: 'Save photos, notes, and milestones in a beautiful shared timeline. Relive your best moments together, from first dates to anniversaries and everything in between.',
-                icon: ImageIcon,
-                iconColor: 'text-purple-400',
-                iconBg: 'bg-purple-500/10 border-purple-500/20',
-              },
-              {
-                title: 'Date Planner',
-                desc: 'Turn ideas into dates with a shared calendar. Track anniversaries, plan date nights, and never forget a special day again. Synced in real-time between partners.',
-                icon: Calendar,
-                iconColor: 'text-emerald-400',
-                iconBg: 'bg-emerald-500/10 border-emerald-500/20',
-              },
-              {
-                title: 'Conflict Repair',
-                desc: 'Work through disagreements with guided prompts and structured reflection. Designed with relationship psychology in mind to help you repair, reconnect, and grow stronger.',
-                icon: Heart,
-                iconColor: 'text-pink-400',
-                iconBg: 'bg-pink-500/10 border-pink-500/20',
-              },
-              {
-                title: 'Virtual Pet',
-                desc: 'Adopt and raise a cute pet together. Complete daily tasks and play a mini game every day to take care of your pet’s needs. Both partners do their half to keep it thriving.',
-                icon: Smile,
-                iconColor: 'text-yellow-400',
-                iconBg: 'bg-yellow-500/10 border-yellow-500/20',
-              },
-              {
-                title: 'Shared Lists',
-                desc: 'Create shared shopping lists, grocery lists, and to-do lists right from the home page. Stay organised together and never forget what you need.',
-                icon: ListTodo,
-                iconColor: 'text-teal-400',
-                iconBg: 'bg-teal-500/10 border-teal-500/20',
-              },
-              {
-                title: 'Rate & Compare',
-                desc: 'Rate and compare movies, TV shows, music, restaurants, and activities together. See how your tastes match up and discover new favourites as a couple.',
-                icon: Star,
-                iconColor: 'text-amber-300',
-                iconBg: 'bg-amber-400/10 border-amber-400/20',
-              },
-            ].map((f, idx) => (
-              <div
-                key={idx}
-                className="group p-6 sm:p-7 rounded-3xl bg-[#150f14] hover:bg-[#1d141b] border border-white/5 hover:border-[#ff3377]/40 transition-all duration-300 shadow-lg flex flex-col justify-between"
-              >
-                <div className="space-y-4">
-                  <div
-                    className={`w-12 h-12 rounded-2xl ${f.iconBg} border flex items-center justify-center ${f.iconColor} transition-transform group-hover:scale-110`}
-                  >
-                    <f.icon className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-xl font-bold font-fraunces text-white group-hover:text-[#ff4d8d] transition-colors">
-                    {f.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed">
-                    {f.desc}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          {renderInteractiveShowcase()}
         </div>
       </section>
 

@@ -24,16 +24,43 @@ import {
 import confetti from 'canvas-confetti';
 import { CoupleTicTacToe } from './CoupleTicTacToe';
 import { ChessDashboard } from './chess/ChessDashboard';
+import { GuessTheNumberGame } from './games/GuessTheNumberGame';
 
 interface GameProps {
   onBack?: () => void;
 }
 
-type GameType = 'chess' | 'tictactoe' | 'would-you-rather' | 'never-have-i-ever' | 'how-well' | 'starters' | 'doodle' | 'conflict' | 'pet';
+type GameType = 'chess' | 'tictactoe' | 'number-guess' | 'would-you-rather' | 'never-have-i-ever' | 'how-well' | 'starters' | 'doodle' | 'conflict' | 'pet';
 
 export const CoupleGamesView: React.FC<GameProps> = () => {
   const { userProfile, partnerProfile } = useAuth();
-  const [selectedGame, setSelectedGame] = useState<GameType>('would-you-rather');
+  const [selectedGame, setSelectedGame] = useState<GameType>(() => {
+    const saved = localStorage.getItem('shoona_active_game_select');
+    return (saved as GameType) || 'would-you-rather';
+  });
+
+  // Keep localStorage synced when game selection changes locally
+  React.useEffect(() => {
+    if (selectedGame) {
+      localStorage.setItem('shoona_active_game_select', selectedGame);
+    }
+  }, [selectedGame]);
+
+  // Keep the active game synced in real-time when accepting notifications
+  React.useEffect(() => {
+    const handleSync = () => {
+      const saved = localStorage.getItem('shoona_active_game_select');
+      if (saved && saved !== selectedGame) {
+        setSelectedGame(saved as GameType);
+      }
+    };
+    const interval = setInterval(handleSync, 200);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, [selectedGame]);
 
   // Virtual Pet State
   const [petName, setPetName] = useState('Mochi');
@@ -253,6 +280,10 @@ export const CoupleGamesView: React.FC<GameProps> = () => {
     return <CoupleTicTacToe onBackToGames={() => setSelectedGame('would-you-rather')} />;
   }
 
+  if (selectedGame === 'number-guess') {
+    return <GuessTheNumberGame onBackToGames={() => setSelectedGame('would-you-rather')} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#0d090c] text-neutral-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -437,11 +468,44 @@ export const CoupleGamesView: React.FC<GameProps> = () => {
           </div>
         </div>
 
+        {/* Dedicated Game Card: Realtime Number Guessing */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#1c1426] via-[#2c1737] to-[#170e20] border-2 border-amber-500/40 hover:border-amber-400 p-6 shadow-2xl transition-all group">
+          <div className="absolute -top-24 -right-24 w-60 h-60 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-5 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-[#ff4d8d] to-purple-500 p-0.5 shadow-lg shadow-amber-500/20 flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition-transform">
+                🔢
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-bold font-fraunces text-white">
+                    Guess the Secret Number 🔢💕
+                  </h2>
+                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-[#ff3377] text-white shadow-sm">
+                    2, 3 & 4 Digit Modes
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-neutral-300 max-w-xl">
+                  Take turns typing your guess one-by-one! Realtime feedback guides you with 📈 <strong>HIGHER</strong> or 📉 <strong>LOWER</strong> hints until the winner guesses the secret number!
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedGame('number-guess')}
+              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-[#ff4d8d] to-[#ff3377] hover:brightness-110 text-white font-bold text-xs shadow-xl shadow-amber-500/25 flex items-center gap-2 shrink-0 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+            >
+              Play Number Game 🔢 →
+            </button>
+          </div>
+        </div>
+
         {/* Game Mode Switcher Navigation (Pill tabs) */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2">
           {[
             { id: 'chess', label: 'Grand Chess ♟️', icon: '♟️', badge: 'Live AI & Real' },
             { id: 'tictactoe', label: 'Tic-Tac-Toe 💕', icon: '🎮', badge: 'Live 3×3' },
+            { id: 'number-guess', label: 'Number Guess 🔢', icon: '🔢', badge: '2-4 Digits' },
             { id: 'would-you-rather', label: 'Would You Rather', icon: '🤥', badge: 'Popular' },
             { id: 'never-have-i-ever', label: 'Never Have I Ever', icon: '🙈', badge: 'Juicy' },
             { id: 'how-well', label: 'How Well Do You Know', icon: '💡', badge: 'Quiz' },

@@ -24,6 +24,7 @@ import {
   Gamepad2,
   UserCheck,
   Award,
+  Compass,
 } from 'lucide-react';
 import { PartnerProfileModal } from './PartnerProfileModal';
 
@@ -63,7 +64,8 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'vault', label: 'Media Vault', icon: ImageIcon, desc: 'Shared photos & memories' },
     { id: 'daily', label: 'Daily & Mood', icon: Smile, desc: 'Couple question & mood check-in' },
     { id: 'games', label: 'Couple Games & Pet', icon: Gamepad2, desc: '7 games, 1000+ questions & digital pet' },
-    { id: 'bucket', label: 'Bucket List', icon: Sparkles, desc: 'Couple dreams & adventures' },
+    { id: 'dreams', label: 'Our Future Dreams 💕', icon: Sparkles, desc: 'Marriage, home, intimacy & baby goals' },
+    { id: 'bucket', label: 'Bucket List', icon: Compass, desc: 'Couple dreams & adventures' },
     { id: 'timeline', label: 'Relationship Timeline', icon: Clock, desc: 'Our love story journey' },
     { id: 'features', label: 'Feature Showcase & Guide', icon: Sparkles, desc: 'Depict all features, images & encryption' },
     { id: 'settings', label: 'Settings', icon: Settings, desc: 'Couple & profile preferences' },

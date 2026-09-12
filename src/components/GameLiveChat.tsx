@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, createSafeChannel } from '../lib/supabase';
+import { supabase, createSafeChannel, sendRealtimeBroadcast } from '../lib/supabase';
 import { TicTacToeChatMessage } from '../types';
 import { sendGameChatMessage } from '../utils/tictactoeService';
 import { Send, MessageCircle, Sparkles, Heart } from 'lucide-react';
@@ -98,12 +98,8 @@ export const GameLiveChat: React.FC<GameLiveChatProps> = ({
     setMessages((prev) => [...prev, newMsg]);
 
     try {
-      // Broadcast to partner
-      supabase.channel(`game_chat:${gameId}`).send({
-        type: 'broadcast',
-        event: 'chat_msg',
-        payload: newMsg,
-      });
+      // Broadcast to partner safely using the helper
+      sendRealtimeBroadcast(`game_chat:${gameId}`, 'chat_msg', newMsg);
 
       await sendGameChatMessage(coupleId, gameId, currentUser, clean);
     } catch (e) {

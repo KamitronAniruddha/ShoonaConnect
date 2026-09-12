@@ -136,6 +136,34 @@ export function createSafeChannel(channelName: string, opts?: any) {
 }
 
 /**
+ * Safely sends a realtime broadcast over WebSockets by subscribing first,
+ * completely avoiding deprecation/REST fallback warnings and failures.
+ */
+export function sendRealtimeBroadcast(channelName: string, event: string, payload: any): void {
+  try {
+    const channel = createSafeChannel(channelName);
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        channel.send({
+          type: 'broadcast',
+          event,
+          payload,
+        });
+        
+        // Clean up the channel after a short delay to ensure transmission completes
+        setTimeout(() => {
+          try {
+            supabase.removeChannel(channel);
+          } catch {}
+        }, 3000);
+      }
+    });
+  } catch (err) {
+    console.warn('Realtime broadcast error:', err);
+  }
+}
+
+/**
  * High quality client-side image compression to guarantee fast uploads
  * without uploading massive original files.
  */

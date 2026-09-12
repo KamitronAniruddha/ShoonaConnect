@@ -37,6 +37,13 @@ interface AuthContextType {
   partnerProfile: UserProfile | null;
   loading: boolean;
   isPasswordRecovery: boolean;
+  pastRelationships: Couple[];
+  loadingPastRelationships: boolean;
+  refreshPastRelationships: () => Promise<void>;
+  proposeMutualBreakup: () => Promise<void>;
+  acceptMutualBreakup: () => Promise<void>;
+  declineOrCancelMutualBreakup: () => Promise<void>;
+  restoreRelationship: (pastCoupleId: string) => Promise<void>;
   clearPasswordRecovery: () => void;
   signInWithPassword: (email: string, pass: string) => Promise<void>;
   signUpWithPassword: (email: string, pass: string, username: string, name?: string) => Promise<void>;
@@ -74,6 +81,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [partnerProfile, setPartnerProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false);
+  const [pastRelationships, setPastRelationships] = useState<Couple[]>([]);
+  const [loadingPastRelationships, setLoadingPastRelationships] = useState<boolean>(false);
 
   // Test backend connectivity at boot
   useEffect(() => {
@@ -981,9 +990,416 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await breakRelationshipAndPurgeData('Mutual leave');
   };
 
+  // Load and refresh past relationships from database
+  const refreshPastRelationships = async () => {
+    if (!currentUser?.uid) return;
+    setLoadingPastRelationships(true);
+    try {
+      const { data, error } = await supabase
+        .from('couples')
+        .select('*')
+        .contains('user_ids', [currentUser.uid])
+        .eq('status', 'dissolved')
+        .eq('dissolution_reason', 'mutual');
+
+      if (error) {
+        console.error('Error loading past relationships:', error);
+      } else if (data) {
+        setPastRelationships(data.map(coupleRowToCouple));
+      }
+    } catch (err) {
+      console.error('Error loading past relationships:', err);
+    } finally {
+      setLoadingPastRelationships(false);
+    }
+  };
+
+  // Trigger past relationships load on login / component mount
+  useEffect(() => {
+    if (currentUser?.uid) {
+      refreshPastRelationships();
+    } else {
+      setPastRelationships([]);
+    }
+  }, [currentUser?.uid]);
+
+  // Propose a mutual breakup and enter discussion state
+  const proposeMutualBreakup = async () => {
+    if (!currentUser || !couple) throw new Error('No active relationship to break');
+    
+    const breakState = {
+      initiator: currentUser.uid,
+      initiatorAccepted: true,
+      partnerAccepted: false,
+      proposedAt: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('couples')
+      .update({
+        relationship_status: 'breakup_pending',
+        relationship_story: JSON.stringify(breakState),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', couple.id);
+
+    if (error) {
+      throw new Error(parseSupabaseError(error).message);
+    }
+
+    // Add system message to initiate discussion
+    await supabase.from('messages').insert({
+      couple_id: couple.id,
+      sender_id: currentUser.uid,
+      sender_name: 'Mutual Breakup Advisor',
+      text: `⚠️ A mutual breakup discussion has been initiated. Let's talk things through in this private window before confirming a final path. 💬`,
+      type: 'breakup_discussion',
+      created_at: new Date().toISOString()
+    });
+  };
+
+  // Accept a mutual breakup
+  const acceptMutualBreakup = async () => {
+    if (!currentUser || !couple) throw new Error('No active relationship found');
+
+    let currentBreakState = {
+      initiator: currentUser.uid,
+      initiatorAccepted: true,
+      partnerAccepted: false,
+      proposedAt: new Date().toISOString()
+    };
+
+    try {
+      if (couple.relationshipStory) {
+        currentBreakState = JSON.parse(couple.relationshipStory);
+      }
+    } catch {
+      // Use fallback
+    }
+
+    const initiatorAccepted = currentBreakState.initiator === currentUser.uid ? true : currentBreakState.initiatorAccepted;
+    const partnerAccepted = currentBreakState.initiator !== currentUser.uid ? true : currentBreakState.partnerAccepted;
+
+    // If both have now accepted, execute breakup
+    if (initiatorAccepted && partnerAccepted) {
+      const nowStr = new Date().toISOString();
+
+      let oldHistory: any[] = [];
+      let metStory = '';
+      try {
+        if (couple.relationshipStory) {
+          const parsed = JSON.parse(couple.relationshipStory);
+          if (parsed && typeof parsed === 'object') {
+            oldHistory = parsed.history || [];
+            metStory = parsed.metStory || '';
+          }
+        }
+      } catch {
+        metStory = couple.relationshipStory || '';
+      }
+
+      const breakupEvent = {
+        type: 'breakup',
+        date: nowStr,
+        byName: userProfile?.nickname || userProfile?.displayName || 'Partner',
+        reason: 'mutual'
+      };
+
+      const newHistory = [...oldHistory, breakupEvent];
+      const storyPayload = JSON.stringify({
+        metStory,
+        history: newHistory,
+        breakState: currentBreakState
+      });
+
+      // 1. Mark couple as dissolved mutually (preserving data!)
+      const { error: coupleErr } = await supabase
+        .from('couples')
+        .update({
+          status: 'dissolved',
+          relationship_status: 'dissolved',
+          dissolved_by: currentUser.uid,
+          dissolved_by_name: userProfile?.nickname || userProfile?.displayName || 'System',
+          dissolution_reason: 'mutual',
+          dissolved_at: nowStr,
+          relationship_story: storyPayload,
+          updated_at: nowStr
+        })
+        .eq('id', couple.id);
+
+      if (coupleErr) throw new Error(parseSupabaseError(coupleErr).message);
+
+      // 2. Unlink both profiles so they can start fresh
+      const partnerId = couple.userIds?.find((id) => id !== currentUser.uid) || couple.partnerId;
+
+      await supabase.from('profiles').update({
+        couple_id: null,
+        pair_code: null,
+        onboarding_completed: false,
+        last_dissolution_notice: {
+          dissolvedByName: userProfile?.nickname || userProfile?.displayName || 'Your partner',
+          dissolvedAt: nowStr,
+          reason: 'Mutually decided to part ways.'
+        },
+        updated_at: nowStr
+      }).eq('id', currentUser.uid);
+
+      if (partnerId) {
+        await supabase.from('profiles').update({
+          couple_id: null,
+          pair_code: null,
+          onboarding_completed: false,
+          last_dissolution_notice: {
+            dissolvedByName: userProfile?.nickname || userProfile?.displayName || 'Your partner',
+            dissolvedAt: nowStr,
+            reason: 'Mutually decided to part ways.'
+          },
+          updated_at: nowStr
+        }).eq('id', partnerId);
+      }
+
+      // 3. System message in breakup chat
+      await supabase.from('messages').insert({
+        couple_id: couple.id,
+        sender_id: currentUser.uid,
+        sender_name: 'Mutual Breakup Advisor',
+        text: `💔 We have mutually agreed to dissolve this relationship space. All past data is securely stored in your history. We wish you both personal peace and light on your next chapters. ✨`,
+        type: 'breakup_discussion',
+        created_at: nowStr
+      });
+
+      // 4. Update local states
+      setCouple(null);
+      setPartnerProfile(null);
+      setUserProfile((prev) => prev ? { ...prev, coupleId: null, pairCode: null, onboardingCompleted: false } : null);
+      await refreshPastRelationships();
+    } else {
+      // Save state where only one accepted
+      const breakState = {
+        initiator: currentBreakState.initiator,
+        initiatorAccepted,
+        partnerAccepted,
+        proposedAt: currentBreakState.proposedAt
+      };
+
+      const { error } = await supabase
+        .from('couples')
+        .update({
+          relationship_story: JSON.stringify(breakState),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', couple.id);
+
+      if (error) throw new Error(parseSupabaseError(error).message);
+
+      // System message in breakup chat
+      await supabase.from('messages').insert({
+        couple_id: couple.id,
+        sender_id: currentUser.uid,
+        sender_name: 'Mutual Breakup Advisor',
+        text: `✅ ${userProfile?.nickname || userProfile?.displayName || 'Your partner'} has agreed to the mutual breakup. Awaiting confirmation from the other partner.`,
+        type: 'breakup_discussion',
+        created_at: new Date().toISOString()
+      });
+    }
+  };
+
+  // Decline or cancel a mutual breakup proposal
+  const declineOrCancelMutualBreakup = async () => {
+    if (!currentUser || !couple) throw new Error('No active relationship found');
+
+    const { error } = await supabase
+      .from('couples')
+      .update({
+        relationship_status: 'dating',
+        relationship_story: '', // Clear proposal JSON
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', couple.id);
+
+    if (error) throw new Error(parseSupabaseError(error).message);
+
+    // Standard chat system announcement
+    await supabase.from('messages').insert({
+      couple_id: couple.id,
+      sender_id: currentUser.uid,
+      sender_name: 'Our Sanctuary',
+      text: `💖 True love wins! We decided to stay together and cancel the breakup proposal. Today, our beautiful journey continues! 🥰`,
+      type: 'text',
+      created_at: new Date().toISOString()
+    });
+  };
+
+  // Restore a past mutual relationship
+  const restoreRelationship = async (pastCoupleId: string) => {
+    if (!currentUser) throw new Error('You must be logged in');
+
+    // Make sure current user is free
+    const { data: myProf, error: myErr } = await supabase
+      .from('profiles')
+      .select('couple_id')
+      .eq('id', currentUser.uid)
+      .maybeSingle();
+
+    if (myErr) throw new Error(parseSupabaseError(myErr).message);
+    if (myProf?.couple_id) {
+      throw new Error('You are currently in an active relationship. You must leave your current relationship before reconnecting with a past partner.');
+    }
+
+    // Get the past couple info
+    const { data: pastCoupleData, error: pastErr } = await supabase
+      .from('couples')
+      .select('*')
+      .eq('id', pastCoupleId)
+      .maybeSingle();
+
+    if (pastErr) throw new Error(parseSupabaseError(pastErr).message);
+    if (!pastCoupleData) throw new Error('Past relationship not found');
+
+    const pastCouple = coupleRowToCouple(pastCoupleData);
+    const partnerId = pastCouple.userIds?.find((id) => id !== currentUser.uid) || pastCouple.partnerId;
+
+    if (!partnerId) throw new Error('Past partner not found on this record');
+
+    // Make sure the past partner is free too
+    const { data: partnerProf, error: partnerErr } = await supabase
+      .from('profiles')
+      .select('couple_id, display_name, nickname')
+      .eq('id', partnerId)
+      .maybeSingle();
+
+    if (partnerErr) throw new Error(parseSupabaseError(partnerErr).message);
+    if (partnerProf?.couple_id) {
+      const partnerName = partnerProf.nickname || partnerProf.display_name || 'Your past partner';
+      throw new Error(`${partnerName} is currently in an active relationship. They must leave their current relationship first so you both can reconnect.`);
+    }
+
+    const nowStr = new Date().toISOString();
+
+    let oldHistory: any[] = [];
+    let metStory = '';
+    try {
+      if (pastCoupleData.relationship_story) {
+        const parsed = JSON.parse(pastCoupleData.relationship_story);
+        if (parsed && typeof parsed === 'object') {
+          oldHistory = parsed.history || [];
+          metStory = parsed.metStory || '';
+        }
+      }
+    } catch {
+      metStory = pastCoupleData.relationship_story || '';
+    }
+
+    const patchUpEvent = {
+      type: 'patch_up',
+      date: nowStr,
+      byName: userProfile?.nickname || userProfile?.displayName || 'Partner'
+    };
+
+    const newHistory = [...oldHistory, patchUpEvent];
+    const storyPayload = JSON.stringify({
+      metStory,
+      history: newHistory
+    });
+
+    // 1. Mark couple as connected again
+    const { error: reconnectErr } = await supabase
+      .from('couples')
+      .update({
+        status: 'connected',
+        relationship_status: 'dating',
+        dissolved_by: null,
+        dissolved_by_name: null,
+        dissolution_reason: null,
+        dissolved_at: null,
+        relationship_story: storyPayload,
+        updated_at: nowStr
+      })
+      .eq('id', pastCoupleId);
+
+    if (reconnectErr) throw new Error(parseSupabaseError(reconnectErr).message);
+
+    // 2. Link both profiles back to this couple
+    await supabase
+      .from('profiles')
+      .update({
+        couple_id: pastCoupleId,
+        onboarding_completed: true,
+        last_dissolution_notice: null,
+        updated_at: nowStr
+      })
+      .eq('id', currentUser.uid);
+
+    await supabase
+      .from('profiles')
+      .update({
+        couple_id: pastCoupleId,
+        onboarding_completed: true,
+        last_dissolution_notice: null,
+        updated_at: nowStr
+      })
+      .eq('id', partnerId);
+
+    // 3. Write reconnection system message
+    await supabase.from('messages').insert({
+      couple_id: pastCoupleId,
+      sender_id: currentUser.uid,
+      sender_name: 'Our Sanctuary',
+      text: `✨ Reconnected! We have stepped back into our private sanctuary. All past messages, letters, memories, and pet progress are fully restored! Welcome home. ❤️`,
+      type: 'text',
+      created_at: nowStr
+    });
+
+    // 4. Update local states
+    const updatedCouple = {
+      ...pastCouple,
+      status: 'connected' as const,
+      relationshipStatus: 'dating' as const,
+      dissolvedBy: null,
+      dissolvedByName: null,
+      dissolutionReason: null,
+      dissolvedAt: null,
+      relationshipStory: storyPayload,
+    };
+    setCouple(updatedCouple);
+    setUserProfile((prev) => prev ? { ...prev, coupleId: pastCoupleId, onboardingCompleted: true } : null);
+
+    if (partnerProf) {
+      setPartnerProfile(profileRowToUserProfile({
+        id: partnerId,
+        ...partnerProf
+      } as any));
+    }
+
+    await refreshPastRelationships();
+  };
+
   // Update couple settings
   const updateCoupleSettings = async (updates: Partial<Couple>) => {
     if (!userProfile?.coupleId) return;
+
+    // Preserve existing timeline history if we are updating the story text
+    if (updates.relationshipStory !== undefined) {
+      let existingHistory: any[] = [];
+      try {
+        if (couple?.relationshipStory) {
+          const parsed = JSON.parse(couple.relationshipStory);
+          if (parsed && typeof parsed === 'object' && Array.isArray(parsed.history)) {
+            existingHistory = parsed.history;
+          }
+        }
+      } catch {
+        // Not JSON
+      }
+
+      if (existingHistory.length > 0) {
+        updates.relationshipStory = JSON.stringify({
+          metStory: updates.relationshipStory,
+          history: existingHistory
+        });
+      }
+    }
+
     const row = coupleToRow(updates);
     const { error } = await supabase
       .from('couples')
@@ -1081,6 +1497,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         partnerProfile,
         loading,
         isPasswordRecovery,
+        pastRelationships,
+        loadingPastRelationships,
+        refreshPastRelationships,
+        proposeMutualBreakup,
+        acceptMutualBreakup,
+        declineOrCancelMutualBreakup,
+        restoreRelationship,
         clearPasswordRecovery,
         signInWithPassword,
         signUpWithPassword,
