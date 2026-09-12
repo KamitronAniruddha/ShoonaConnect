@@ -1,0 +1,9 @@
+          {/* MODE 1: WOULD YOU RATHER */}
+          {selectedGame === 'would-you-rather' && <AdvancedWouldYouRather />}
+
+          {/* MODE 2: NEVER HAVE I EVER */}
+          {selectedGame === 'never-have-i-ever' && <AdvancedNeverHaveIEver />}
+
+          {/* MODE 3: HOW WELL DO YOU KNOW ME */}
+          {selectedGame === 'how-well' && <AdvancedHowWellDoYouKnow />}
+

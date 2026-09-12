@@ -51,10 +51,11 @@ export function useSaathiAchievementsData() {
     const days = Math.max(1, calculateDaysTogether(couple.anniversaryDate || couple.datingStartDate || couple.createdAt));
     const years = Math.floor(days / 365);
 
-    const hasBothBirthdays = Boolean(
-      (userProfile?.birthday || couple.partner1Birthday || couple.birthdays?.[userProfile?.uid || '']) &&
-      (partnerProfile?.birthday || couple.partner2Birthday || couple.birthdays?.['partner'])
-    );
+    const isCreator = couple.creatorId === userProfile?.uid;
+    const myBirthdayStr = userProfile?.birthday || couple.birthdays?.[userProfile?.uid || ''] || (isCreator ? couple.partner1Birthday : couple.partner2Birthday);
+    const partnerBirthdayStr = partnerProfile?.birthday || couple.birthdays?.['partner'] || couple.birthdays?.[partnerProfile?.uid || ''] || (isCreator ? couple.partner2Birthday : couple.partner1Birthday);
+    
+    const hasBothBirthdays = Boolean(myBirthdayStr && partnerBirthdayStr);;
 
     const isCustomTheme = Boolean(couple.theme && couple.theme !== 'rose');
     const isPinActive = Boolean(couple.pinLock && couple.pinLock.length === 4);

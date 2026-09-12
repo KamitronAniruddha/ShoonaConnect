@@ -102,7 +102,7 @@ export const ChatEmojiPicker: React.FC<ChatEmojiPickerProps> = ({
 
   return (
     <div
-      className={`w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-rose-100 dark:border-slate-800 overflow-hidden z-30 flex flex-col ${
+      className={`w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-rose-100 dark:border-slate-800 overflow-hidden z-30 flex flex-col ${
         inline ? '' : 'absolute bottom-14 left-0 sm:left-2 animate-in fade-in zoom-in-95'
       }`}
     >

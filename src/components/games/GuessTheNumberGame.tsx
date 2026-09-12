@@ -188,6 +188,17 @@ export const GuessTheNumberGame: React.FC<GuessTheNumberGameProps> = ({ onBackTo
     sendRealtimeBroadcast(`num_guess_realtime:${coupleId}`, 'guess_game_state', updatedGame);
   };
 
+
+  useEffect(() => {
+    const handleCancel = (e: any) => {
+      if (incomingGameInvitation && e.detail.gameId === incomingGameInvitation.id) {
+        setIncomingGameInvitation(null);
+      }
+    };
+    window.addEventListener('game_invitation_cancelled', handleCancel);
+    return () => window.removeEventListener('game_invitation_cancelled', handleCancel);
+  }, [incomingGameInvitation]);
+  
   // Listen for real-time broadcasts from partner
   useEffect(() => {
     if (!coupleId) return;
@@ -229,6 +240,11 @@ export const GuessTheNumberGame: React.FC<GuessTheNumberGameProps> = ({ onBackTo
               });
               return;
             }
+          }
+
+          if (receivedGame.status === 'waiting' && receivedGame.player1Uid !== userProfile?.uid) {
+            setIncomingGameInvitation(receivedGame);
+            return;
           }
 
           setGame(receivedGame);

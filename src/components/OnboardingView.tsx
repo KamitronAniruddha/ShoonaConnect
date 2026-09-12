@@ -156,7 +156,7 @@ export const OnboardingView: React.FC = () => {
     userProfile?.occupationType || 'profession'
   );
   const [occupation, setOccupation] = useState(userProfile?.occupation || '');
-  const [gender, setGender] = useState<string>(userProfile?.gender || 'prefer_not_to_say');
+  const [gender, setGender] = useState<string>(userProfile?.gender && userProfile.gender !== 'prefer_not_to_say' && userProfile.gender !== 'non_binary' ? userProfile.gender : 'female');
   const [petNameForPartner, setPetNameForPartner] = useState(userProfile?.petNameForPartner || 'Shoona');
   const [petNameForSelf, setPetNameForSelf] = useState(userProfile?.petNameForSelf || '');
   const [pronouns, setPronouns] = useState(userProfile?.pronouns || '');
@@ -386,6 +386,11 @@ export const OnboardingView: React.FC = () => {
     setError(null);
     if (!displayName.trim()) {
       setError('Please enter your full name or what you like to be called.');
+      return;
+    }
+    
+    if (gender === 'prefer_not_to_say' || !gender.trim()) {
+      setError('Please select your gender before continuing. This helps personalize the application experience.');
       return;
     }
 
@@ -1369,8 +1374,6 @@ export const OnboardingView: React.FC = () => {
                   {[
                     { id: 'female', label: 'Female', pronoun: 'She/Her', emoji: '👩' },
                     { id: 'male', label: 'Male', pronoun: 'He/Him', emoji: '👨' },
-                    { id: 'non_binary', label: 'Non-Binary', pronoun: 'They/Them', emoji: '🌈' },
-                    { id: 'prefer_not_to_say', label: 'Private/Other', pronoun: 'Heart', emoji: '✨' },
                   ].map((g) => (
                     <button
                       key={g.id}

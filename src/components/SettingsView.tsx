@@ -75,7 +75,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
   // Settings states
   const [displayName, setDisplayName] = useState(userProfile?.displayName || '');
   const [nickname, setNickname] = useState(userProfile?.nickname || '');
-  const [gender, setGender] = useState<string>(userProfile?.gender || 'prefer_not_to_say');
+  const [gender, setGender] = useState<string>(userProfile?.gender && userProfile.gender !== 'prefer_not_to_say' && userProfile.gender !== 'non_binary' ? userProfile.gender : 'female');
   const [petNameForPartner, setPetNameForPartner] = useState(userProfile?.petNameForPartner || 'Shoona');
   const [petNameForSelf, setPetNameForSelf] = useState(userProfile?.petNameForSelf || '');
   const [occupation, setOccupation] = useState(userProfile?.occupation || '');
@@ -88,17 +88,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
   const [coupleName, setCoupleName] = useState(couple?.coupleName || '');
   const [anniversaryDate, setAnniversaryDate] = useState(couple?.anniversaryDate || '');
   const [anniversaryTime, setAnniversaryTime] = useState(couple?.anniversaryTime || couple?.datingStartTime || '12:00');
+  const isCreatorInitial = couple?.creatorId === userProfile?.uid;
   const [myBirthday, setMyBirthday] = useState(
     userProfile?.birthday ||
     (userProfile?.uid ? couple?.birthdays?.[userProfile.uid] : '') ||
-    couple?.partner1Birthday ||
+    (isCreatorInitial ? couple?.partner1Birthday : couple?.partner2Birthday) ||
     ''
   );
   const [partnerBirthday, setPartnerBirthday] = useState(
     partnerProfile?.birthday ||
     (partnerProfile?.uid ? couple?.birthdays?.[partnerProfile.uid] : '') ||
     couple?.birthdays?.['partner'] ||
-    couple?.partner2Birthday ||
+    (isCreatorInitial ? couple?.partner2Birthday : couple?.partner1Birthday) ||
     ''
   );
   const [relationshipStatus, setRelationshipStatus] = useState(couple?.relationshipStatus || 'in_relationship');
@@ -200,14 +201,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
         currentBirthdays['partner'] = partnerBirthday;
       }
 
+      const isCreator = couple?.creatorId === userProfile?.uid;
+      
       await updateCoupleSettings({
         coupleName: coupleName.trim(),
         anniversaryDate,
         anniversaryTime,
         datingStartDate: anniversaryDate,
         datingStartTime: anniversaryTime,
-        partner1Birthday: myBirthday,
-        partner2Birthday: partnerBirthday,
+        partner1Birthday: isCreator ? myBirthday : partnerBirthday,
+        partner2Birthday: isCreator ? partnerBirthday : myBirthday,
         birthdays: currentBirthdays,
         relationshipStatus: relationshipStatus as any,
         relationshipStory: relationshipStory.trim(),

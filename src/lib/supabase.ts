@@ -141,7 +141,20 @@ export function createSafeChannel(channelName: string, opts?: any) {
  */
 export function sendRealtimeBroadcast(channelName: string, event: string, payload: any): void {
   try {
-    const channel = createSafeChannel(channelName);
+    const existing = supabase.getChannels().find(
+      (c) => c.topic === `realtime:${channelName}` || c.topic === channelName
+    );
+
+    if (existing && existing.state === 'joined') {
+      existing.send({
+        type: 'broadcast',
+        event,
+        payload,
+      });
+      return;
+    }
+
+    const channel = supabase.channel(channelName);
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         channel.send({
@@ -150,16 +163,15 @@ export function sendRealtimeBroadcast(channelName: string, event: string, payloa
           payload,
         });
         
-        // Clean up the channel after a short delay to ensure transmission completes
         setTimeout(() => {
           try {
             supabase.removeChannel(channel);
           } catch {}
-        }, 3000);
+        }, 1000);
       }
     });
-  } catch (err) {
-    console.warn('Realtime broadcast error:', err);
+  } catch {
+    // Quiet catch
   }
 }
 

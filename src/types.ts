@@ -120,7 +120,11 @@ export type MessageType =
   | 'shared_list'
   | 'shared_note'
   | 'location'
-  | 'reminder';
+  | 'reminder'
+  | 'doodle'
+  | 'time_capsule'
+  | 'mood_pulse'
+  | 'hug_kiss';
 
 export interface PollOption {
   id: string;
@@ -134,6 +138,41 @@ export interface PollData {
   allowMultiple?: boolean;
   isClosed?: boolean;
   closedAt?: string;
+  createdBy?: string;
+  allowAddOptions?: boolean;
+}
+
+export interface DoodleData {
+  canvasData: string; // Base64 PNG image
+  canvasDataUrl?: string; // Compatibility alias
+  prompt?: string;
+  strokeCount?: number;
+  canvasTheme?: string;
+  createdBy: string;
+  senderName?: string;
+  drawnBy?: string;
+}
+
+export interface TimeCapsuleData {
+  id?: string;
+  title: string;
+  unlockDate: string;
+  note?: string;
+  sealedBy: string;
+  category?: string;
+  isUnlocked?: boolean;
+  unlockedAt?: string;
+  mediaUrl?: string;
+  items?: string[];
+}
+
+export interface MoodPulseData {
+  mood: string;
+  emoji: string;
+  energyLevel: number; // 1 to 5
+  loveLanguageNeed?: string;
+  craving?: string;
+  note?: string;
 }
 
 export interface DateInviteData {
@@ -172,8 +211,17 @@ export interface SharedNoteData {
 
 export interface LoveNoteData {
   note: string;
-  style: 'rose' | 'golden' | 'midnight' | 'sunset';
+  style: 'rose' | 'golden' | 'midnight' | 'sunset' | 'parchment' | 'galaxy';
   senderMood?: string;
+  waxSeal?: string;
+  openWhen?: string;
+  isOpened?: boolean;
+  openedAt?: string;
+  reactions?: Record<string, string>;
+  fontFamily?: string;
+  senderId?: string;
+  senderName?: string;
+  senderPhoto?: string;
 }
 
 export interface CountdownData {
@@ -239,6 +287,9 @@ export interface Message {
   sharedNote?: SharedNoteData;
   loveNoteData?: LoveNoteData;
   loveNote?: LoveNoteData;
+  doodleData?: DoodleData;
+  timeCapsuleData?: TimeCapsuleData;
+  moodPulseData?: MoodPulseData;
   locationData?: LocationData;
   location?: LocationData;
   reminderData?: ReminderData;
@@ -595,4 +646,28 @@ export type ActiveTab =
   | 'timeline'
   | 'settings'
   | 'features'
-  | 'achievements';
+  | 'achievements'
+  | 'period';
+
+export interface PeriodLog {
+  id: string;
+  coupleId: string;
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  flowIntensity?: 'light' | 'medium' | 'heavy' | 'spotting';
+  symptoms?: string[];
+  moods?: string[];
+  notes?: string;
+  loggedBy: string;
+  loggedByName?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PeriodCycleAnalytics {
+  averageCycleLength: number;
+  averagePeriodLength: number;
+  nextPeriodStartPredicted: string; // YYYY-MM-DD
+  currentPhase: 'Menstrual' | 'Follicular' | 'Ovulation' | 'Luteal' | 'Unknown';
+  phaseDaysLeft: number;
+}

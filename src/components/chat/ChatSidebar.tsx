@@ -26,6 +26,7 @@ interface ChatSidebarProps {
   onFilterChange: (filter: 'all' | 'pinned' | 'media' | 'dates') => void;
   onStartCall: (type: 'audio' | 'video') => void;
   onOpenLoveNoteModal: () => void;
+  onOpenChat?: () => void;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -41,6 +42,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onFilterChange,
   onStartCall,
   onOpenLoveNoteModal,
+  onOpenChat,
 }) => {
   const formatTimeAgo = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -143,6 +145,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       {/* Active Conversation Card */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         <div
+          onClick={() => onOpenChat?.()}
           className="p-3 rounded-2xl bg-rose-50/70 dark:bg-slate-800/80 border border-rose-200/80 dark:border-slate-700 hover:bg-rose-100/60 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center gap-3 relative shadow-xs"
         >
           {/* Avatar with Presence Indicator */}
@@ -202,12 +205,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             )}
           </div>
 
-          {/* Unread count badge */}
-          {unreadCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px] shrink-0">
-              {unreadCount}
-            </span>
-          )}
+          {/* Unread count badge / mobile indicator */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {unreadCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-bold text-[10px]">
+                {unreadCount}
+              </span>
+            )}
+            <span className="md:hidden text-rose-400 text-xs font-bold">›</span>
+          </div>
         </div>
       </div>
 
@@ -215,7 +221,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <div className="p-3 border-t border-rose-100 dark:border-slate-800 bg-rose-50/30 dark:bg-slate-900/30">
         <button
           type="button"
-          onClick={onOpenLoveNoteModal}
+          onClick={() => {
+            onOpenLoveNoteModal();
+            onOpenChat?.();
+          }}
           className="w-full py-2.5 px-3 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold text-xs rounded-2xl shadow-sm flex items-center justify-center gap-1.5 transition-transform hover:scale-[1.01] cursor-pointer"
         >
           <Heart className="w-3.5 h-3.5 fill-current" /> Send Love Note to {partnerName}

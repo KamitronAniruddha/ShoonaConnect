@@ -1,3 +1,6 @@
+import { AdvancedWouldYouRather } from "./games/AdvancedWouldYouRather";
+import { AdvancedNeverHaveIEver } from "./games/AdvancedNeverHaveIEver";
+import { AdvancedHowWellDoYouKnow } from "./games/AdvancedHowWellDoYouKnow";
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -9,6 +12,7 @@ import {
   HelpCircle,
   Shuffle,
   Trophy,
+
   Palette,
   Compass,
   CheckCircle2,
@@ -501,7 +505,7 @@ export const CoupleGamesView: React.FC<GameProps> = () => {
         </div>
 
         {/* Game Mode Switcher Navigation (Pill tabs) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
           {[
             { id: 'chess', label: 'Grand Chess ♟️', icon: '♟️', badge: 'Live AI & Real' },
             { id: 'tictactoe', label: 'Tic-Tac-Toe 💕', icon: '🎮', badge: 'Live 3×3' },
@@ -542,226 +546,19 @@ export const CoupleGamesView: React.FC<GameProps> = () => {
         {/* GAME CONTENT SECTION */}
         <div className="bg-[#150f14] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative">
           {/* MODE 1: WOULD YOU RATHER */}
-          {selectedGame === 'would-you-rather' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                <div className="space-y-1">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#ff4d8d]">
-                    Dilemma {wyrIndex + 1} of {wouldYouRatherDilemmas.length} · {wouldYouRatherDilemmas[wyrIndex].category}
-                  </span>
-                  <h2 className="text-2xl sm:text-3xl font-bold font-fraunces text-white">Would You Rather...</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={nextWyr}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-neutral-300 flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <Shuffle className="w-3.5 h-3.5" /> Next Dilemma
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 py-4">
-                {/* Option A */}
-                <button
-                  type="button"
-                  onClick={() => handleWyrVote('a')}
-                  className={`p-6 sm:p-8 rounded-3xl text-left border-2 transition-all cursor-pointer relative overflow-hidden group ${
-                    myWyrVote === 'a'
-                      ? 'bg-gradient-to-br from-[#ff3377]/25 to-[#241320] border-[#ff3377] shadow-xl shadow-pink-500/20'
-                      : 'bg-[#1a1218] border-white/10 hover:border-[#ff3377]/50 hover:bg-[#20151f]'
-                  }`}
-                >
-                  <span className="text-xs font-black px-2.5 py-1 rounded-full bg-[#ff3377]/20 text-[#ff4d8d] uppercase tracking-wider mb-4 inline-block">
-                    Choice A
-                  </span>
-                  <p className="text-lg sm:text-xl font-bold font-fraunces text-white leading-relaxed">
-                    {wouldYouRatherDilemmas[wyrIndex].a}
-                  </p>
-
-                  {myWyrVote === 'a' && (
-                    <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-400">
-                      <CheckCircle2 className="w-4 h-4" /> You selected Choice A
-                    </div>
-                  )}
-
-                  {partnerWyrVote === 'a' && (
-                    <div className="mt-2 text-xs text-[#ff4d8d] font-semibold flex items-center gap-1.5 bg-[#ff3377]/10 p-2 rounded-xl border border-[#ff3377]/20">
-                      <Heart className="w-3.5 h-3.5 fill-[#ff3377]" /> Partner also chose this! (Match! 💕)
-                    </div>
-                  )}
-                </button>
-
-                {/* Option B */}
-                <button
-                  type="button"
-                  onClick={() => handleWyrVote('b')}
-                  className={`p-6 sm:p-8 rounded-3xl text-left border-2 transition-all cursor-pointer relative overflow-hidden group ${
-                    myWyrVote === 'b'
-                      ? 'bg-gradient-to-br from-[#ff3377]/25 to-[#241320] border-[#ff3377] shadow-xl shadow-pink-500/20'
-                      : 'bg-[#1a1218] border-white/10 hover:border-[#ff3377]/50 hover:bg-[#20151f]'
-                  }`}
-                >
-                  <span className="text-xs font-black px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 uppercase tracking-wider mb-4 inline-block">
-                    Choice B
-                  </span>
-                  <p className="text-lg sm:text-xl font-bold font-fraunces text-white leading-relaxed">
-                    {wouldYouRatherDilemmas[wyrIndex].b}
-                  </p>
-
-                  {myWyrVote === 'b' && (
-                    <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-400">
-                      <CheckCircle2 className="w-4 h-4" /> You selected Choice B
-                    </div>
-                  )}
-
-                  {partnerWyrVote === 'b' && (
-                    <div className="mt-2 text-xs text-[#ff4d8d] font-semibold flex items-center gap-1.5 bg-[#ff3377]/10 p-2 rounded-xl border border-[#ff3377]/20">
-                      <Heart className="w-3.5 h-3.5 fill-[#ff3377]" /> Partner also chose this! (Match! 💕)
-                    </div>
-                  )}
-                </button>
-              </div>
-
-              {myWyrVote && (
-                <div className="text-center p-4 bg-[#1e131b] rounded-2xl border border-white/10 text-xs text-neutral-300">
-                  {myWyrVote === partnerWyrVote ? (
-                    <span className="text-emerald-400 font-bold">
-                      🎉 Perfect compatibility! Both of you picked the exact same answer!
-                    </span>
-                  ) : (
-                    <span>
-                      💬 Contrasts make life exciting! Ask your partner why they felt differently over dinner tonight.
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* MODE 2: NEVER HAVE I EVER */}
-          {selectedGame === 'never-have-i-ever' && (
-            <div className="space-y-6 text-center max-w-2xl mx-auto py-4">
-              <div className="space-y-1">
-                <span className="text-xs font-bold uppercase tracking-widest text-[#ff4d8d]">
-                  Card {nhieIndex + 1} of {nhiePrompts.length} · Couple Confessions
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-bold font-fraunces text-white">Never Have I Ever...</h2>
-              </div>
-
-              <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-[#21141e] to-[#180e16] border border-[#ff3377]/30 shadow-2xl relative">
-                <p className="text-xl sm:text-2xl font-fraunces text-white leading-relaxed">
-                  "{nhiePrompts[nhieIndex]}"
-                </p>
-              </div>
-
-              <div className="flex items-center justify-center gap-4 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleNhie('have')}
-                  className="px-8 py-4 rounded-2xl bg-gradient-to-r from-[#ff3377] to-[#ff5c8a] hover:brightness-110 text-white font-bold text-sm shadow-lg shadow-pink-500/25 transition-all cursor-pointer active:scale-95 flex items-center gap-2"
-                >
-                  🙈 I HAVE!
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleNhie('never')}
-                  className="px-8 py-4 rounded-2xl bg-[#1e141c] hover:bg-[#281b26] border border-white/10 text-white font-bold text-sm transition-all cursor-pointer active:scale-95 flex items-center gap-2"
-                >
-                  😇 NEVER
-                </button>
-              </div>
-
-              {nhieHistory.length > 0 && (
-                <div className="mt-8 text-left border-t border-white/10 pt-4 space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Previous Rounds</h4>
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-2">
-                    {nhieHistory.map((item, idx) => (
-                      <div key={idx} className="text-xs p-2.5 rounded-xl bg-white/5 flex items-center justify-between">
-                        <span className="text-neutral-300 truncate max-w-sm">{item.prompt}</span>
-                        <span
-                          className={`font-bold px-2 py-0.5 rounded-md text-[10px] uppercase ${
-                            item.result === 'have' ? 'bg-[#ff3377]/20 text-[#ff4d8d]' : 'bg-emerald-500/20 text-emerald-400'
-                          }`}
-                        >
-                          {item.result}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* MODE 3: HOW WELL DO YOU KNOW ME */}
-          {selectedGame === 'how-well' && (
-            <div className="space-y-6 max-w-2xl mx-auto">
-              <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                <div className="space-y-1">
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#ff4d8d]">
-                    Question {hwIndex + 1} of {howWellQuestions.length}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-bold font-fraunces text-white">How Well Do You Know Me?</h2>
-                </div>
-                <div className="text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
-                  Score: {hwScore}
-                </div>
-              </div>
 
-              <div className="p-6 rounded-2xl bg-[#1e131b] border border-white/10">
-                <p className="text-lg font-bold font-fraunces text-white">
-                  {howWellQuestions[hwIndex].q}
-                </p>
-              </div>
+          {/* MODE 1: WOULD YOU RATHER */}
+          {selectedGame === 'would-you-rather' && <AdvancedWouldYouRather />}
 
-              <div className="space-y-3">
-                {howWellQuestions[hwIndex].options.map((opt, i) => {
-                  const isChosen = hwSelected === i;
-                  const isCorrect = i === howWellQuestions[hwIndex].correct;
-                  let btnStyle = 'bg-[#1a1218] border-white/10 hover:border-[#ff3377]/40';
+          {/* MODE 2: NEVER HAVE I EVER */}
+          {selectedGame === 'never-have-i-ever' && <AdvancedNeverHaveIEver />}
 
-                  if (hwSelected !== null) {
-                    if (isCorrect) btnStyle = 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold';
-                    else if (isChosen) btnStyle = 'bg-rose-500/20 border-rose-500 text-rose-300';
-                  }
-
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      disabled={hwSelected !== null}
-                      onClick={() => {
-                        setHwSelected(i);
-                        if (i === howWellQuestions[hwIndex].correct) {
-                          setHwScore((s) => s + 10);
-                          confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
-                        }
-                      }}
-                      className={`w-full p-4 rounded-2xl text-left border transition-all cursor-pointer flex items-center justify-between ${btnStyle}`}
-                    >
-                      <span className="text-sm">{opt}</span>
-                      {hwSelected !== null && isCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {hwSelected !== null && (
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHwSelected(null);
-                      setHwIndex((prev) => (prev + 1) % howWellQuestions.length);
-                    }}
-                    className="px-6 py-2.5 rounded-xl bg-[#ff3377] hover:bg-[#ff4d8d] text-white text-xs font-bold transition-all cursor-pointer shadow-md"
-                  >
-                    Next Question →
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          {/* MODE 3: HOW WELL DO YOU KNOW ME */}
+          {selectedGame === 'how-well' && <AdvancedHowWellDoYouKnow />}
 
           {/* MODE 4: DEEP CONVERSATION STARTERS */}
           {selectedGame === 'starters' && (

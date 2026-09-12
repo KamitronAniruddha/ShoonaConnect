@@ -109,11 +109,11 @@ export const Navigation: React.FC<NavigationProps> = ({
               </span>
             </div>
 
-            <div>
-              <h1 className="text-sm font-bold text-slate-800 dark:text-white tracking-tight leading-tight font-display">
+            <div className="min-w-0">
+              <h1 className="text-sm font-bold text-slate-800 dark:text-white tracking-tight leading-tight font-display truncate max-w-[130px] xs:max-w-[180px] sm:max-w-none">
                 {couple?.coupleName || `${userProfile?.displayName || 'You'} & ${partnerProfile?.displayName || 'Partner'}`}
               </h1>
-              <p className="text-[11px] font-medium text-rose-500 dark:text-rose-400 flex items-center gap-1">
+              <p className="text-[11px] font-medium text-rose-500 dark:text-rose-400 flex items-center gap-1 truncate">
                 <span>Day {daysTogether} of Us</span>
                 <span className="text-slate-300 dark:text-slate-600">•</span>
                 <span className="text-slate-400 dark:text-slate-500">Private Space</span>
@@ -231,7 +231,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       </header>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-rose-100 dark:border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-lg transition-colors duration-300">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-rose-100 dark:border-slate-800 px-3 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around shadow-lg transition-colors duration-300">
         {mainTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -252,7 +252,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   </span>
                 ) : null}
               </div>
-              <span className="text-[10px] font-semibold mt-0.5 tracking-tight">{tab.label}</span>
+              <span className="text-[10px] font-semibold mt-0.5 tracking-tight whitespace-nowrap">{tab.label}</span>
             </button>
           );
         })}

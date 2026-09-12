@@ -504,6 +504,7 @@ export function listenToTicTacToeGames(
 
   fetchGames();
 
+  const pollInterval = setInterval(fetchGames, 3500); // Fallback if postgres_changes fails
   const channel = createSafeChannel(`tictactoe:${coupleId}`)
     .on(
       'postgres_changes',
@@ -521,5 +522,6 @@ export function listenToTicTacToeGames(
 
   return () => {
     supabase.removeChannel(channel);
-  };
+      clearInterval(pollInterval);
+    };
 }

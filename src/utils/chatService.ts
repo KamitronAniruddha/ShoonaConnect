@@ -17,7 +17,44 @@ import {
   CallRecord,
   SharedAlbum,
   SharedAlbumPhoto,
+  DoodleData,
+  TimeCapsuleData,
+  MoodPulseData,
 } from '../types';
+
+// ---------------------------------------------------------------------------
+// Local Cache & Cross-Tab Broadcast Synchronization
+// ---------------------------------------------------------------------------
+const CACHE_KEY_PREFIX = 'shoona_messages_';
+
+export function getCachedMessages(coupleId: string): Message[] {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY_PREFIX + coupleId);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function setCachedMessages(coupleId: string, messages: Message[]): void {
+  try {
+    localStorage.setItem(CACHE_KEY_PREFIX + coupleId, JSON.stringify(messages));
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannel('shoona_chat_channel_' + coupleId);
+      bc.postMessage({ type: 'SYNC_MESSAGES', messages });
+      bc.close();
+    }
+  } catch {}
+}
+
+export function updateLocalMessage(coupleId: string, messageId: string, updater: (msg: Message) => Message): void {
+  try {
+    const list = getCachedMessages(coupleId);
+    const updated = list.map((m) => (m.id === messageId ? updater(m) : m));
+    setCachedMessages(coupleId, updated);
+  } catch {}
+}
 
 // ---------------------------------------------------------------------------
 // Web Audio Procedural Sounds (Zero external audio file dependencies)
@@ -123,6 +160,73 @@ export function playLoveNoteChime() {
   }
 }
 
+export function playVoteChime() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(523.25, now);
+    osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.1);
+    gain.gain.setValueAtTime(0.09, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.12);
+  } catch {}
+}
+
+export function playHeartbeatSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    [
+      { freq: 65, time: 0, dur: 0.12, gainVal: 0.25 },
+      { freq: 55, time: 0.18, dur: 0.14, gainVal: 0.2 },
+    ].forEach(({ freq, time, dur, gainVal }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + time);
+      osc.frequency.exponentialRampToValueAtTime(35, now + time + dur);
+      gain.gain.setValueAtTime(gainVal, now + time);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + time + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + time);
+      osc.stop(now + time + dur);
+    });
+  } catch {}
+}
+
+export function playWaxCrackSound() {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    [
+      { freq: 280, t: 0, dur: 0.05, type: 'sawtooth' as OscillatorType },
+      { freq: 440, t: 0.04, dur: 0.06, type: 'triangle' as OscillatorType },
+      { freq: 880, t: 0.1, dur: 0.35, type: 'sine' as OscillatorType },
+    ].forEach(({ freq, t, dur, type }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now + t);
+      gain.gain.setValueAtTime(0.08, now + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + t + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + t);
+      osc.stop(now + t + dur);
+    });
+  } catch {}
+}
+
 let ringtoneInterval: any = null;
 export function playRingtoneSound() {
   stopRingtoneSound();
@@ -168,7 +272,7 @@ export function stopRingtoneSound() {
 }
 
 // ---------------------------------------------------------------------------
-// Send Message
+// Send Message (Dual-Mode: Local Storage & Supabase Sync)
 // ---------------------------------------------------------------------------
 export async function sendChatMessage(
   coupleId: string,
@@ -191,6 +295,9 @@ export async function sendChatMessage(
     countdownData?: CountdownData;
     sharedListData?: SharedListData;
     sharedNoteData?: SharedNoteData;
+    doodleData?: DoodleData;
+    timeCapsuleData?: TimeCapsuleData;
+    moodPulseData?: MoodPulseData;
     locationData?: LocationData;
     reminderData?: ReminderData;
     scheduledFor?: string;
@@ -198,7 +305,53 @@ export async function sendChatMessage(
   }
 ): Promise<string> {
   const now = new Date().toISOString();
+  const generatedId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
 
+  // Local object for immediate display & persistence
+  const localMsg: Message = {
+    id: generatedId,
+    coupleId,
+    senderId: params.senderId,
+    senderName: params.senderName,
+    senderPhoto: params.senderPhoto,
+    text: params.text || '',
+    type: params.type || 'text',
+    mediaUrl: params.mediaUrl,
+    mediaType: params.mediaType,
+    fileDetails: params.fileDetails,
+    audioDetails: params.audioDetails,
+    replyTo: params.replyTo,
+    loveNoteData: params.loveNoteData,
+    loveNote: params.loveNoteData,
+    dateInvite: params.dateInvite,
+    gameChallenge: params.gameChallenge,
+    pollData: params.pollData,
+    poll: params.pollData,
+    questionData: params.questionData,
+    countdownData: params.countdownData,
+    countdown: params.countdownData,
+    sharedListData: params.sharedListData,
+    sharedList: params.sharedListData,
+    sharedNoteData: params.sharedNoteData,
+    sharedNote: params.sharedNoteData,
+    doodleData: params.doodleData,
+    timeCapsuleData: params.timeCapsuleData,
+    moodPulseData: params.moodPulseData,
+    locationData: params.locationData,
+    location: params.locationData,
+    reminderData: params.reminderData,
+    reminder: params.reminderData,
+    scheduledFor: params.scheduledFor,
+    expiresAt: params.expiresAt,
+    readBy: [params.senderId],
+    createdAt: now,
+  };
+
+  // 1. Optimistically append to local cache
+  const cached = getCachedMessages(coupleId);
+  setCachedMessages(coupleId, [...cached, localMsg]);
+
+  // 2. Prepare database payload
   const msgPayload: Record<string, any> = {
     couple_id: coupleId,
     sender_id: params.senderId,
@@ -223,24 +376,34 @@ export async function sendChatMessage(
   if (params.countdownData) msgPayload.countdown = params.countdownData;
   if (params.sharedListData) msgPayload.shared_list = params.sharedListData;
   if (params.sharedNoteData) msgPayload.shared_note = params.sharedNoteData;
+  if (params.doodleData) msgPayload.doodle_data = params.doodleData;
+  if (params.timeCapsuleData) msgPayload.time_capsule_data = params.timeCapsuleData;
+  if (params.moodPulseData) msgPayload.mood_pulse_data = params.moodPulseData;
   if (params.locationData) msgPayload.location = params.locationData;
   if (params.reminderData) msgPayload.reminder = params.reminderData;
   if (params.scheduledFor) msgPayload.scheduled_for = params.scheduledFor;
   if (params.expiresAt) msgPayload.expires_at = params.expiresAt;
 
-  const { data, error } = await supabase
-    .from('messages')
-    .insert(msgPayload)
-    .select('id')
-    .single();
+  // 3. Attempt to save in Supabase in background
+  try {
+    const { data } = await supabase
+      .from('messages')
+      .insert(msgPayload)
+      .select('id')
+      .single();
 
-  if (error) {
-    console.error('Failed to send message:', error.message);
-    throw new Error(error.message);
+    if (data?.id) {
+      // update ID if assigned by DB
+      updateLocalMessage(coupleId, generatedId, (m) => ({ ...m, id: data.id }));
+      playMessageSentSound();
+      return data.id;
+    }
+  } catch (err) {
+    console.warn('Message saved to local resilient store, remote insert warning:', err);
   }
 
   playMessageSentSound();
-  return data.id;
+  return generatedId;
 }
 
 // ---------------------------------------------------------------------------
@@ -441,16 +604,261 @@ export async function voteOnCouplePoll(
     return { ...opt, votes };
   });
 
-  await supabase
-    .from('messages')
-    .update({
-      poll: {
-        ...pollData,
-        options: newOptions,
-      },
-    })
-    .eq('id', messageId)
-    .eq('couple_id', coupleId);
+  const updatedPoll: PollData = {
+    ...pollData,
+    options: newOptions,
+  };
+
+  // Optimistic local update
+  updateLocalMessage(coupleId, messageId, (m) => ({
+    ...m,
+    pollData: updatedPoll,
+    poll: updatedPoll,
+  }));
+  playVoteChime();
+
+  try {
+    await supabase
+      .from('messages')
+      .update({ poll: updatedPoll })
+      .eq('id', messageId)
+      .eq('couple_id', coupleId);
+  } catch (err) {
+    console.warn('Poll vote saved locally, remote update warning:', err);
+  }
+}
+
+// 3b. Close / Reopen Poll
+export async function toggleCloseCouplePoll(
+  coupleId: string,
+  messageId: string,
+  pollData: PollData,
+  isClosed: boolean
+): Promise<void> {
+  const updatedPoll: PollData = {
+    ...pollData,
+    isClosed,
+  };
+
+  updateLocalMessage(coupleId, messageId, (m) => ({
+    ...m,
+    pollData: updatedPoll,
+    poll: updatedPoll,
+  }));
+
+  try {
+    await supabase
+      .from('messages')
+      .update({ poll: updatedPoll })
+      .eq('id', messageId)
+      .eq('couple_id', coupleId);
+  } catch (err) {
+    console.warn('Close poll update warning:', err);
+  }
+}
+
+// 3c. Add Option to Poll
+export async function addOptionToCouplePoll(
+  coupleId: string,
+  messageId: string,
+  pollData: PollData,
+  optionText: string
+): Promise<void> {
+  if (!optionText.trim()) return;
+  const newOpt = {
+    id: 'opt_' + Date.now(),
+    text: optionText.trim(),
+    votes: [],
+  };
+  const updatedPoll: PollData = {
+    ...pollData,
+    options: [...pollData.options, newOpt],
+  };
+
+  updateLocalMessage(coupleId, messageId, (m) => ({
+    ...m,
+    pollData: updatedPoll,
+    poll: updatedPoll,
+  }));
+
+  try {
+    await supabase
+      .from('messages')
+      .update({ poll: updatedPoll })
+      .eq('id', messageId)
+      .eq('couple_id', coupleId);
+  } catch (err) {
+    console.warn('Add poll option update warning:', err);
+  }
+}
+
+// 3d. Open Love Note & Crack Wax Seal
+export async function openLoveNoteInChat(
+  coupleId: string,
+  messageId: string,
+  loveNoteData: LoveNoteData
+): Promise<void> {
+  const updatedData: LoveNoteData = {
+    ...loveNoteData,
+    isOpened: true,
+    openedAt: new Date().toISOString(),
+  };
+
+  updateLocalMessage(coupleId, messageId, (m) => ({
+    ...m,
+    loveNoteData: updatedData,
+    loveNote: updatedData,
+  }));
+
+  try {
+    await supabase
+      .from('messages')
+      .update({ love_note: updatedData })
+      .eq('id', messageId)
+      .eq('couple_id', coupleId);
+  } catch (err) {
+    console.warn('Love note opened update warning:', err);
+  }
+}
+
+// 3e. React to Love Note
+export async function reactToLoveNote(
+  coupleId: string,
+  messageId: string,
+  loveNoteData: LoveNoteData,
+  myUid: string,
+  reaction: string
+): Promise<void> {
+  const updatedData: LoveNoteData = {
+    ...loveNoteData,
+    reactions: {
+      ...(loveNoteData.reactions || {}),
+      [myUid]: reaction,
+    },
+  };
+
+  updateLocalMessage(coupleId, messageId, (m) => ({
+    ...m,
+    loveNoteData: updatedData,
+    loveNote: updatedData,
+  }));
+
+  try {
+    await supabase
+      .from('messages')
+      .update({ love_note: updatedData })
+      .eq('id', messageId)
+      .eq('couple_id', coupleId);
+  } catch (err) {
+    console.warn('Love note react update warning:', err);
+  }
+}
+
+// 3f. Send Realtime Doodle to Couple
+export async function sendDoodleToCouple(
+  coupleId: string,
+  user: UserProfile,
+  canvasDataUrl: string,
+  prompt?: string
+): Promise<string> {
+  const doodleData: DoodleData = {
+    canvasData: canvasDataUrl,
+    canvasDataUrl,
+    prompt,
+    strokeCount: 1,
+    createdBy: user.uid,
+    senderName: user.displayName,
+    drawnBy: user.displayName,
+  };
+
+  return sendChatMessage(coupleId, {
+    senderId: user.uid,
+    senderName: user.displayName,
+    senderPhoto: user.photoURL,
+    text: prompt ? `🎨 Doodle: "${prompt}"` : '🎨 Shared a love doodle!',
+    type: 'doodle',
+    mediaUrl: canvasDataUrl,
+    mediaType: 'image',
+    doodleData,
+  });
+}
+
+// 3g. Seal Time Capsule
+export async function sealTimeCapsule(
+  coupleId: string,
+  user: UserProfile,
+  capsuleData: TimeCapsuleData
+): Promise<string> {
+  return sendChatMessage(coupleId, {
+    senderId: user.uid,
+    senderName: user.displayName,
+    senderPhoto: user.photoURL,
+    text: `⏳ Time Capsule Sealed: "${capsuleData.title}" (Unlocks: ${capsuleData.unlockDate})`,
+    type: 'time_capsule',
+    timeCapsuleData: {
+      ...capsuleData,
+      sealedBy: user.displayName,
+    },
+  });
+}
+
+// 3h. Unlock Time Capsule
+export async function unlockTimeCapsule(
+  coupleId: string,
+  messageId: string,
+  capsuleData: TimeCapsuleData
+): Promise<void> {
+  const updatedData: TimeCapsuleData = {
+    ...capsuleData,
+    isUnlocked: true,
+  };
+
+  updateLocalMessage(coupleId, messageId, (m) => ({
+    ...m,
+    timeCapsuleData: updatedData,
+  }));
+
+  try {
+    await supabase
+      .from('messages')
+      .update({ time_capsule_data: updatedData })
+      .eq('id', messageId)
+      .eq('couple_id', coupleId);
+  } catch (err) {
+    console.warn('Time capsule unlock warning:', err);
+  }
+}
+
+// 3i. Send Mood Pulse
+export async function sendMoodPulse(
+  coupleId: string,
+  user: UserProfile,
+  pulseData: MoodPulseData
+): Promise<string> {
+  return sendChatMessage(coupleId, {
+    senderId: user.uid,
+    senderName: user.displayName,
+    senderPhoto: user.photoURL,
+    text: `💓 Mood Pulse: ${pulseData.emoji} ${pulseData.mood}`,
+    type: 'mood_pulse',
+    moodPulseData: pulseData,
+  });
+}
+
+// 3j. Send Haptic Hug & Kiss
+export async function sendHapticHugKiss(
+  coupleId: string,
+  user: UserProfile,
+  note?: string
+): Promise<string> {
+  playHeartbeatSound();
+  return sendChatMessage(coupleId, {
+    senderId: user.uid,
+    senderName: user.displayName,
+    senderPhoto: user.photoURL,
+    text: note || '💋 Sent a warm, lingering hug & kiss!',
+    type: 'hug_kiss',
+  });
 }
 
 // 4. Answer Couple Question
@@ -799,23 +1207,62 @@ export function listenToMessages(
   coupleId: string,
   callback: (messages: Message[]) => void
 ): () => void {
-  // Initial fetch
-  const fetchMessages = async () => {
-    const { data } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('couple_id', coupleId)
-      .order('created_at', { ascending: true })
-      .limit(150);
+  // 1. Instantly return local cached messages
+  const initialCached = getCachedMessages(coupleId);
+  if (initialCached.length > 0) {
+    callback(initialCached);
+  }
 
-    if (data) {
-      callback(data.map(messageRowToMessage));
+  // 2. BroadcastChannel for instant cross-tab sync
+  let bc: BroadcastChannel | null = null;
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      bc = new BroadcastChannel('shoona_chat_channel_' + coupleId);
+      bc.onmessage = (e) => {
+        if (e.data?.type === 'SYNC_MESSAGES' && Array.isArray(e.data?.messages)) {
+          callback(e.data.messages);
+        }
+      };
+    }
+  } catch {}
+
+  // 3. Initial and incremental fetch from Supabase
+  const fetchMessages = async () => {
+    try {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('couple_id', coupleId)
+        .order('created_at', { ascending: true })
+        .limit(150);
+
+      if (data && data.length > 0) {
+        const mapped = data.map(messageRowToMessage);
+        // Merge with any unsynced local messages
+        const currentLocal = getCachedMessages(coupleId);
+        const mapById = new Map<string, Message>();
+        mapped.forEach((m) => mapById.set(m.id, m));
+        currentLocal.forEach((m) => {
+          if (!mapById.has(m.id)) {
+            mapById.set(m.id, m);
+          }
+        });
+
+        const merged = Array.from(mapById.values()).sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+        setCachedMessages(coupleId, merged);
+        callback(merged);
+      }
+    } catch (err) {
+      console.warn('Could not fetch messages from Supabase, using local store:', err);
     }
   };
 
   fetchMessages();
 
-  // Realtime subscription
+  // 4. Supabase Realtime subscription
   const channel = createSafeChannel(`messages:${coupleId}`)
     .on(
       'postgres_changes',
@@ -826,13 +1273,13 @@ export function listenToMessages(
         filter: `couple_id=eq.${coupleId}`,
       },
       () => {
-        // Re-fetch or merge to maintain chronological order
         fetchMessages();
       }
     )
     .subscribe();
 
   return () => {
+    if (bc) bc.close();
     supabase.removeChannel(channel);
   };
 }

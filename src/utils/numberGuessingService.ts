@@ -18,7 +18,7 @@ export interface NumberGuessingGame {
   secretNumber: number;
   currentTurnPlayerId: string;
   currentTurnPlayerName: string;
-  status: 'in_progress' | 'completed';
+  status: 'waiting' | 'in_progress' | 'completed';
   winnerUid: string | null;
   winnerName: string | null;
   guessCount: number;

@@ -79,7 +79,9 @@ export const PartnerNotificationToasts: React.FC<PartnerNotificationToastsProps>
       .on('broadcast', { event: 'game_invitation' }, (event) => {
         const payload = event.payload;
         if (payload && payload.hostUid !== userProfile.uid) {
+          window.dispatchEvent(new CustomEvent('game_invitation_declined', { detail: payload }));
           playToastChime();
+          window.dispatchEvent(new CustomEvent('game_invitation_cancelled', { detail: payload }));
           const newToast: ToastNotification = {
             id: 'invite_' + Date.now(),
             type: 'game_invite',
@@ -97,7 +99,9 @@ export const PartnerNotificationToasts: React.FC<PartnerNotificationToastsProps>
       .on('broadcast', { event: 'game_invitation_declined' }, (event) => {
         const payload = event.payload;
         if (payload && payload.declinedBy !== userProfile.uid) {
+          window.dispatchEvent(new CustomEvent('game_invitation_declined', { detail: payload }));
           playToastChime();
+          window.dispatchEvent(new CustomEvent('game_invitation_cancelled', { detail: payload }));
           const newToast: ToastNotification = {
             id: 'dec_' + Date.now(),
             type: 'game_declined',
@@ -113,6 +117,7 @@ export const PartnerNotificationToasts: React.FC<PartnerNotificationToastsProps>
       .on('broadcast', { event: 'game_invitation_cancelled' }, (event) => {
         const payload = event.payload;
         if (payload && payload.cancelledBy !== userProfile.uid) {
+          window.dispatchEvent(new CustomEvent('game_invitation_cancelled', { detail: payload }));
           const newToast: ToastNotification = {
             id: 'can_' + Date.now(),
             type: 'game_cancelled',
@@ -137,8 +142,10 @@ export const PartnerNotificationToasts: React.FC<PartnerNotificationToastsProps>
             const msg = messageRowToMessage(payload.new);
             // Only show toast if message is from partner
             if (msg.senderId !== userProfile.uid) {
-              playToastChime();
-              const newToast: ToastNotification = {
+              window.dispatchEvent(new CustomEvent('game_invitation_declined', { detail: payload }));
+          playToastChime();
+          window.dispatchEvent(new CustomEvent('game_invitation_cancelled', { detail: payload }));
+          const newToast: ToastNotification = {
                 id: 'msg_' + msg.id,
                 type: 'chat',
                 title: `💬 New message from ${msg.senderName || partnerProfile?.displayName || 'Partner'}`,

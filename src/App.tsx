@@ -21,9 +21,11 @@ import { LockScreen } from './components/LockScreen';
 import { LandingView } from './components/LandingView';
 import { CoupleGamesView } from './components/CoupleGamesView';
 import { AchievementsView } from './components/AchievementsView';
+import { PeriodTrackerView } from './components/PeriodTrackerView';
 import { DissolutionNoticeModal } from './components/DissolutionNoticeModal';
 import { PartnerNotificationToasts } from './components/PartnerNotificationToasts';
 import { BreakupDiscussionRoom } from './components/BreakupDiscussionRoom';
+import { ForceGenderSetup } from './components/ForceGenderSetup';
 import { supabase, createSafeChannel } from './lib/supabase';
 import { messageRowToMessage } from './utils/supabaseMappers';
 import { Heart } from 'lucide-react';
@@ -115,8 +117,11 @@ const MainApp: React.FC = () => {
     );
   }
 
+  // Force gender selection if missing
+  const needsGender = !userProfile.gender || userProfile.gender === 'prefer_not_to_say';
+
   // Locked with passcode
-  if (isLocked && couple.pinLock) {
+  if (isLocked && couple.pinLock && !needsGender) {
     return (
       <>
         <DissolutionNoticeModal />
@@ -138,6 +143,8 @@ const MainApp: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50/40 via-slate-50 to-pink-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
       <DissolutionNoticeModal />
+      {needsGender && <ForceGenderSetup />}
+      
       {/* Navigation Header & Mobile Bottom Bar */}
       <Navigation
         activeTab={activeTab}
@@ -147,7 +154,11 @@ const MainApp: React.FC = () => {
       />
 
       {/* Main Tab Render Container */}
-      <main className="min-h-[calc(100vh-4rem)] pb-20 md:pb-8">
+      <main className={
+        activeTab === 'chat'
+          ? 'h-[calc(100dvh-4rem)] pb-[3.8rem] md:pb-0 overflow-hidden'
+          : 'min-h-[calc(100vh-4rem)] pb-20 md:pb-8'
+      }>
         {activeTab === 'home' && <HomeView setActiveTab={setActiveTab} />}
         {activeTab === 'chat' && <ChatView setActiveTab={setActiveTab} />}
         {activeTab === 'moments' && <MomentsView />}
@@ -162,6 +173,7 @@ const MainApp: React.FC = () => {
         {activeTab === 'bucket' && <BucketListView />}
         {activeTab === 'dreams' && <DreamsAndGoalsView />}
         {activeTab === 'features' && <LandingView isInsideApp setActiveTab={setActiveTab} />}
+        {activeTab === 'period' && <PeriodTrackerView />}
         {activeTab === 'settings' && (
           <SettingsView onSetLockPin={() => setIsLocked(false)} setActiveTab={setActiveTab} />
         )}

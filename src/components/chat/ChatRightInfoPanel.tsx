@@ -80,7 +80,13 @@ export const ChatRightInfoPanel: React.FC<ChatRightInfoPanelProps> = ({
   const gamesCount = messages.filter((m) => m.gameChallenge).length;
 
   return (
-    <div className="w-80 md:w-96 border-l border-rose-100 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col h-full z-20 shrink-0 select-none">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        onClick={onClose}
+        className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-xs z-25 animate-in fade-in"
+      />
+      <div className="fixed inset-y-0 right-0 w-full xs:w-[90vw] sm:w-88 md:w-96 md:relative border-l border-rose-100 dark:border-slate-800 bg-white dark:bg-slate-900 md:bg-white/95 md:dark:bg-slate-900/95 backdrop-blur-md flex flex-col h-full z-30 md:z-20 shrink-0 select-none shadow-2xl md:shadow-none animate-in slide-in-from-right-full duration-200">
       {/* Header */}
       <div className="p-4 border-b border-rose-100 dark:border-slate-800 flex items-center justify-between">
         <h3 className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
@@ -590,5 +596,6 @@ export const ChatRightInfoPanel: React.FC<ChatRightInfoPanelProps> = ({
         )}
       </div>
     </div>
+    </>
   );
 };

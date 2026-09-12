@@ -13,6 +13,9 @@ import {
   PollData,
   LoveNoteData,
   CountdownData,
+  DoodleData,
+  TimeCapsuleData,
+  MoodPulseData,
 } from '../types';
 import {
   sendChatMessage,
@@ -25,6 +28,16 @@ import {
   respondToDateInvite,
   respondToGameChallenge,
   voteOnCouplePoll,
+  toggleCloseCouplePoll,
+  addOptionToCouplePoll,
+  openLoveNoteInChat,
+  reactToLoveNote,
+  sendDoodleToCouple,
+  sealTimeCapsule,
+  unlockTimeCapsule,
+  sendMoodPulse,
+  sendHapticHugKiss,
+  playHeartbeatSound,
   answerCoupleQuestion,
   toggleSharedListItem,
   saveMessageToMemories,
@@ -53,6 +66,12 @@ import { ChatActionModals } from './chat/ChatActionModals';
 import { ChatCallModal } from './chat/ChatCallModal';
 import { ChatPhotoViewer } from './chat/ChatPhotoViewer';
 import { PartnerProfileModal } from './PartnerProfileModal';
+import { ChatDoodleModal } from './chat/ChatDoodleModal';
+import { LoveNoteReaderModal } from './chat/LoveNoteReaderModal';
+import { LoveNotesVaultModal } from './chat/LoveNotesVaultModal';
+import { MoodPulseModal } from './chat/MoodPulseModal';
+import { TimeCapsuleModal } from './chat/TimeCapsuleModal';
+import { LoveSparkModal } from './chat/LoveSparkModal';
 
 import {
   Phone,
@@ -144,6 +163,19 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
     | 'location'
     | null
   >(null);
+
+  // 7 Advanced Interactive Features Modals State
+  const [isDoodleModalOpen, setIsDoodleModalOpen] = useState(false);
+  const [doodleInitialPrompt, setDoodleInitialPrompt] = useState('');
+  const [activeLoveNoteForReader, setActiveLoveNoteForReader] = useState<
+    (LoveNoteData & { messageId?: string; senderName?: string; senderId?: string }) | null
+  >(null);
+  const [isLoveNotesVaultOpen, setIsLoveNotesVaultOpen] = useState(false);
+  const [isMoodPulseModalOpen, setIsMoodPulseModalOpen] = useState(false);
+  const [activeTimeCapsuleForModal, setActiveTimeCapsuleForModal] = useState<
+    (TimeCapsuleData & { messageId?: string }) | null
+  >(null);
+  const [isLoveSparkModalOpen, setIsLoveSparkModalOpen] = useState(false);
 
   // Active call state
   const [activeCall, setActiveCall] = useState<CallRecord | null>(null);
@@ -570,9 +602,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-[calc(100vh-4.5rem)] flex bg-white dark:bg-slate-900 sm:rounded-3xl sm:my-2 border border-rose-100 dark:border-slate-800 shadow-xl overflow-hidden relative select-none">
+    <div className="w-full max-w-7xl mx-auto h-full md:h-[calc(100dvh-5.5rem)] md:my-1 flex bg-white dark:bg-slate-900 md:rounded-3xl border-0 md:border border-rose-100 dark:border-slate-800 shadow-xl overflow-hidden relative select-none">
       {/* 1. SIDEBAR (Desktop always, Mobile toggleable) */}
-      <div className={`h-full ${mobileView === 'sidebar' ? 'block w-full' : 'hidden md:block'}`}>
+      <div className={`h-full shrink-0 ${mobileView === 'sidebar' ? 'block w-full' : 'hidden md:block'}`}>
         <ChatSidebar
           partnerName={partnerName}
           partnerPhoto={partnerProfile?.photoURL}
@@ -590,6 +622,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
           onFilterChange={setActiveFilter}
           onStartCall={handleStartCall}
           onOpenLoveNoteModal={() => setActiveActionModal('love_note')}
+          onOpenChat={() => setMobileView('chat')}
         />
       </div>
 
@@ -600,13 +633,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
         }`}
       >
         {/* Chat Header */}
-        <div className="px-4 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-rose-100 dark:border-slate-800 flex items-center justify-between z-10 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-3 sm:px-4 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-rose-100 dark:border-slate-800 flex items-center justify-between z-10 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Mobile Back to Sidebar */}
             <button
               type="button"
               onClick={() => setMobileView('sidebar')}
-              className="md:hidden p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 cursor-pointer"
+              className="md:hidden p-1.5 -ml-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 cursor-pointer shrink-0"
+              title="Back to conversations"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -614,10 +648,10 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
             {/* Partner Avatar + Presence */}
             <div
               onClick={() => setShowPartnerModal(true)}
-              className="flex items-center gap-3 cursor-pointer group"
+              className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group min-w-0"
             >
-              <div className="relative">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-rose-100 dark:bg-slate-800 ring-2 ring-rose-200 dark:ring-slate-700 flex items-center justify-center">
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-rose-100 dark:bg-slate-800 ring-2 ring-rose-200 dark:ring-slate-700 flex items-center justify-center">
                   {partnerProfile?.photoURL ? (
                     <img
                       src={partnerProfile.photoURL}
@@ -635,14 +669,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
                 )}
               </div>
 
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight group-hover:text-rose-500 transition-colors flex items-center gap-1.5">
-                  <span>{partnerName}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-500 dark:text-rose-300 font-semibold border border-rose-100 dark:border-rose-900/40">
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight group-hover:text-rose-500 transition-colors flex items-center gap-1.5">
+                  <span className="truncate max-w-[100px] xs:max-w-[140px] sm:max-w-none">{partnerName}</span>
+                  <span className="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-500 dark:text-rose-300 font-semibold border border-rose-100 dark:border-rose-900/40 shrink-0">
                     Profile
                   </span>
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[10px] sm:text-[11px] text-slate-400 truncate max-w-[110px] xs:max-w-[170px] sm:max-w-none">
                   {isPartnerTyping ? (
                     <span className="text-rose-500 font-medium">typing...</span>
                   ) : isPartnerOnline ? (
@@ -656,12 +690,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
           </div>
 
           {/* Header Action Buttons */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <button
               type="button"
               onClick={() => handleStartCall('audio')}
               title="Voice Call"
-              className="p-2 rounded-xl text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <Phone className="w-4 h-4" />
             </button>
@@ -669,7 +703,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
               type="button"
               onClick={() => handleStartCall('video')}
               title="Video Call"
-              className="p-2 rounded-xl text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <Video className="w-4 h-4" />
             </button>
@@ -677,7 +711,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
               type="button"
               onClick={() => setIsSearchingInHeader(!isSearchingInHeader)}
               title="Search"
-              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+              className={`p-1.5 sm:p-2 rounded-xl transition-colors cursor-pointer ${
                 isSearchingInHeader
                   ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -689,7 +723,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
               type="button"
               onClick={() => setShowRightPanel(!showRightPanel)}
               title="Conversation details & media"
-              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+              className={`p-1.5 sm:p-2 rounded-xl transition-colors cursor-pointer ${
                 showRightPanel
                   ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -860,8 +894,56 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
                       respondToGameChallenge(coupleId!, messageId, response, msg.gameChallenge!)
                     }
                     onVotePoll={(messageId, optionId) =>
-                      voteOnCouplePoll(coupleId!, messageId, optionId, myUid!, msg.pollData!)
+                      voteOnCouplePoll(coupleId!, messageId, optionId, myUid!, (msg.pollData || msg.poll)!)
                     }
+                    onClosePoll={(messageId, isClosed) =>
+                      toggleCloseCouplePoll(coupleId!, messageId, (msg.pollData || msg.poll)!, isClosed)
+                    }
+                    onAddPollOption={(messageId, optionText) =>
+                      addOptionToCouplePoll(coupleId!, messageId, (msg.pollData || msg.poll)!, optionText)
+                    }
+                    onOpenLoveNoteModal={(m) => {
+                      const note = m.loveNoteData || m.loveNote;
+                      if (note) {
+                        openLoveNoteInChat(coupleId!, m.id, note);
+                        setActiveLoveNoteForReader({ ...note, messageId: m.id });
+                      }
+                    }}
+                    onReactLoveNote={(messageId, reaction) => {
+                      const note = msg.loveNoteData || msg.loveNote;
+                      if (note) {
+                        reactToLoveNote(coupleId!, messageId, note, myUid!, reaction);
+                      }
+                    }}
+                    onOpenDoodleModal={(doodleData) => {
+                      setActivePhotoViewer({
+                        url: doodleData.canvasDataUrl || doodleData.canvasData,
+                        caption: doodleData.prompt || 'Couple Artwork',
+                        senderName: doodleData.drawnBy || doodleData.senderName || msg.senderName,
+                        date: msg.createdAt,
+                      });
+                    }}
+                    onDoodleBack={(prompt) => {
+                      setDoodleInitialPrompt(prompt ? 'Reply to: ' + prompt : '');
+                      setIsDoodleModalOpen(true);
+                    }}
+                    onOpenTimeCapsule={(m) => {
+                      if (m.timeCapsuleData) {
+                        setActiveTimeCapsuleForModal({
+                          ...m.timeCapsuleData,
+                          messageId: m.id,
+                        });
+                      }
+                    }}
+                    onSendEmpathyAction={(actionType) => {
+                      if (actionType === 'hug') {
+                        sendHapticHugKiss(coupleId!, userProfile!);
+                      } else if (actionType === 'coffee') {
+                        handleSendMessage('☕ Sent you a warm, comforting coffee and lots of love!');
+                      } else if (actionType === 'love_note') {
+                        setActiveActionModal('love_note');
+                      }
+                    }}
                     onAnswerQuestion={(messageId, answer) =>
                       answerCoupleQuestion(
                         coupleId!,
@@ -916,7 +998,29 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
           replyingTo={replyingTo}
           onCancelReply={() => setReplyingTo(null)}
           onSendMessage={handleSendMessage}
-          onOpenActionModal={(type) => setActiveActionModal(type)}
+          onOpenActionModal={(type) => {
+            if (type === 'doodle') {
+              setIsDoodleModalOpen(true);
+            } else if (type === 'mood_pulse') {
+              setIsMoodPulseModalOpen(true);
+            } else if (type === 'time_capsule') {
+              setActiveTimeCapsuleForModal({
+                title: '',
+                note: '',
+                sealedBy: myUid || 'me',
+                unlockDate: new Date(Date.now() + 86400000 * 30).toISOString().split('T')[0],
+                category: 'anniversary',
+              });
+            } else if (type === 'love_notes_vault') {
+              setIsLoveNotesVaultOpen(true);
+            } else if (type === 'love_spark') {
+              setIsLoveSparkModalOpen(true);
+            } else if (type === 'hug_kiss') {
+              sendHapticHugKiss(coupleId!, userProfile!);
+            } else {
+              setActiveActionModal(type as any);
+            }
+          }}
           onTyping={handleTypingStatusChange}
           showSmartReplies={chatSettings.smartReplies}
         />
@@ -1008,6 +1112,111 @@ export const ChatView: React.FC<ChatViewProps> = ({ setActiveTab }) => {
         isOpen={showPartnerModal}
         onClose={() => setShowPartnerModal(false)}
         setActiveTab={setActiveTab}
+      />
+
+      {/* 8. REALTIME DOODLE CANVAS MODAL */}
+      <ChatDoodleModal
+        isOpen={isDoodleModalOpen}
+        onClose={() => {
+          setIsDoodleModalOpen(false);
+          setDoodleInitialPrompt('');
+        }}
+        coupleId={coupleId || ''}
+        myUid={myUid || ''}
+        myName={userProfile?.displayName || 'Me'}
+        partnerName={partnerName}
+        initialPrompt={doodleInitialPrompt}
+        onSendDoodle={async (canvasDataUrl, prompt) => {
+          if (coupleId && userProfile) {
+            await sendDoodleToCouple(coupleId, userProfile, canvasDataUrl, prompt);
+          }
+        }}
+      />
+
+      {/* 9. LOVE NOTE WAX-SEAL READER MODAL */}
+      {activeLoveNoteForReader && (
+        <LoveNoteReaderModal
+          isOpen={!!activeLoveNoteForReader}
+          onClose={() => setActiveLoveNoteForReader(null)}
+          loveNote={activeLoveNoteForReader}
+          senderName={activeLoveNoteForReader.senderName || partnerName}
+          sentAt={activeLoveNoteForReader.openedAt || new Date().toISOString()}
+          isMe={activeLoveNoteForReader.senderId === myUid}
+          onReact={(reactionEmoji) => {
+            if (activeLoveNoteForReader.messageId && coupleId && myUid) {
+              reactToLoveNote(
+                coupleId,
+                activeLoveNoteForReader.messageId,
+                activeLoveNoteForReader,
+                myUid,
+                reactionEmoji
+              );
+            }
+          }}
+          onSaveToVault={() => {
+            setIsLoveNotesVaultOpen(true);
+            setActiveLoveNoteForReader(null);
+          }}
+        />
+      )}
+
+      {/* 10. LOVE NOTES ENVELOPE VAULT */}
+      <LoveNotesVaultModal
+        isOpen={isLoveNotesVaultOpen}
+        onClose={() => setIsLoveNotesVaultOpen(false)}
+        messages={messages}
+        partnerName={partnerName}
+        onOpenNote={(msg) => {
+          const note = msg.loveNoteData || msg.loveNote;
+          if (note) {
+            setActiveLoveNoteForReader({
+              ...note,
+              messageId: msg.id,
+              senderName: msg.senderName,
+            });
+            setIsLoveNotesVaultOpen(false);
+          }
+        }}
+      />
+
+      {/* 11. MOOD PULSE CHECK-IN MODAL */}
+      <MoodPulseModal
+        isOpen={isMoodPulseModalOpen}
+        onClose={() => setIsMoodPulseModalOpen(false)}
+        partnerName={partnerName}
+        onSendMoodPulse={async (pulseData) => {
+          if (coupleId && userProfile) {
+            await sendMoodPulse(coupleId, userProfile, pulseData);
+          }
+        }}
+      />
+
+      {/* 12. TIME CAPSULE VAULT & SEALING MODAL */}
+      <TimeCapsuleModal
+        isOpen={!!activeTimeCapsuleForModal}
+        onClose={() => setActiveTimeCapsuleForModal(null)}
+        partnerName={partnerName}
+        viewCapsule={activeTimeCapsuleForModal?.messageId ? activeTimeCapsuleForModal : undefined}
+        onSealCapsule={async (capsule) => {
+          if (coupleId && userProfile) {
+            await sealTimeCapsule(coupleId, userProfile, capsule);
+          }
+        }}
+        onUnlockCapsule={async (capsule) => {
+          if (activeTimeCapsuleForModal?.messageId && coupleId) {
+            await unlockTimeCapsule(coupleId, activeTimeCapsuleForModal.messageId, capsule);
+          }
+        }}
+      />
+
+      {/* 13. LOVE SPARKS & DATE NIGHT GENERATOR */}
+      <LoveSparkModal
+        isOpen={isLoveSparkModalOpen}
+        onClose={() => setIsLoveSparkModalOpen(false)}
+        partnerName={partnerName}
+        onSendDateInvite={async (invite) => {
+          await handleSendDateInvite(invite);
+        }}
       />
     </div>
   );

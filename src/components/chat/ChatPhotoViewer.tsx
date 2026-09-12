@@ -47,42 +47,44 @@ export const ChatPhotoViewer: React.FC<ChatPhotoViewerProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md animate-in fade-in select-none">
       {/* Top toolbar */}
-      <div className="flex items-center justify-between p-4 bg-slate-900/60 border-b border-slate-800 text-white z-10">
-        <div>
+      <div className="flex items-center justify-between p-3 sm:p-4 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white z-10">
+        <div className="min-w-0 pr-2">
           {senderName && (
-            <p className="text-xs font-semibold text-rose-300">
+            <p className="text-xs font-semibold text-rose-300 truncate max-w-[140px] sm:max-w-none">
               Shared by {senderName}
             </p>
           )}
           {date && (
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-slate-400 truncate">
               {new Date(date).toLocaleString()}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleZoomOut}
-            title="Zoom Out"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleResetZoom}
-            title="Reset Zoom"
-            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 transition-colors cursor-pointer"
-          >
-            {Math.round(scale * 100)}%
-          </button>
-          <button
-            onClick={handleZoomIn}
-            title="Zoom In"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="hidden sm:flex items-center gap-1">
+            <button
+              onClick={handleZoomOut}
+              title="Zoom Out"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleResetZoom}
+              title="Reset Zoom"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 transition-colors cursor-pointer"
+            >
+              {Math.round(scale * 100)}%
+            </button>
+            <button
+              onClick={handleZoomIn}
+              title="Zoom In"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
           <button
             onClick={handleDownload}
             title="Download Photo"

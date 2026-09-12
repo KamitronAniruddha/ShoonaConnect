@@ -25,8 +25,17 @@ import {
   Bookmark,
   Mail,
   Volume2,
+  Lock,
+  Unlock,
+  Sparkles,
+  Activity,
+  Coffee,
+  Palette,
+  Plus,
+  Feather,
+  X,
 } from 'lucide-react';
-import { Message, UserProfile, ChatThemeKey } from '../../types';
+import { Message, UserProfile, ChatThemeKey, DoodleData, TimeCapsuleData, MoodPulseData } from '../../types';
 
 interface ChatMessageBubbleProps {
   message: Message;
@@ -48,9 +57,17 @@ interface ChatMessageBubbleProps {
   onRespondDate: (messageId: string, response: 'accepted' | 'declined' | 'maybe') => void;
   onRespondGame: (messageId: string, response: 'accepted' | 'declined') => void;
   onVotePoll: (messageId: string, optionId: string) => void;
+  onClosePoll?: (messageId: string, isClosed: boolean) => void;
+  onAddPollOption?: (messageId: string, optionText: string) => void;
   onAnswerQuestion: (messageId: string, answer: string) => void;
   onToggleListItem: (messageId: string, itemId: string) => void;
   onLaunchGame?: (gameType: 'chess' | 'tictactoe') => void;
+  onOpenLoveNoteModal?: (msg: Message) => void;
+  onReactLoveNote?: (messageId: string, reaction: string) => void;
+  onOpenDoodleModal?: (doodleData: DoodleData) => void;
+  onDoodleBack?: (prompt?: string) => void;
+  onOpenTimeCapsule?: (msg: Message) => void;
+  onSendEmpathyAction?: (actionType: string) => void;
 }
 
 export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
@@ -73,13 +90,23 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
   onRespondDate,
   onRespondGame,
   onVotePoll,
+  onClosePoll,
+  onAddPollOption,
   onAnswerQuestion,
   onToggleListItem,
   onLaunchGame,
+  onOpenLoveNoteModal,
+  onReactLoveNote,
+  onOpenDoodleModal,
+  onDoodleBack,
+  onOpenTimeCapsule,
+  onSendEmpathyAction,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showQuickReact, setShowQuickReact] = useState(false);
   const [questionInput, setQuestionInput] = useState('');
+  const [newPollOptionText, setNewPollOptionText] = useState('');
+  const [showAddOptionInput, setShowAddOptionInput] = useState(false);
 
   // Audio player state
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -461,15 +488,260 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                 </div>
               )}
 
-              {/* 4. LOVE NOTE SPECIAL CARD */}
-              {message.loveNoteData && (
-                <div className="p-3.5 rounded-2xl bg-black/10 dark:bg-black/20 border border-white/20 my-1 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider opacity-90">
-                    <Heart className="w-3 h-3 fill-current" /> Private Love Note
+              {/* 4. LOVE NOTE SPECIAL CARD (Overhauled with Wax Seal & Themes) */}
+              {(message.loveNoteData || message.loveNote) && (() => {
+                const note = message.loveNoteData || message.loveNote!;
+                const sealEmoji =
+                  note.waxSeal === 'heart'
+                    ? '💖'
+                    : note.waxSeal === 'kiss'
+                    ? '💋'
+                    : note.waxSeal === 'dove'
+                    ? '🕊️'
+                    : note.waxSeal === 'crown'
+                    ? '👑'
+                    : '🌹';
+                return (
+                  <div
+                    onClick={() => onOpenLoveNoteModal && onOpenLoveNoteModal(message)}
+                    className="p-4 rounded-2xl bg-gradient-to-br from-rose-950/40 via-neutral-900/50 to-pink-950/40 border border-rose-500/30 hover:border-rose-500/60 my-1 space-y-2 cursor-pointer group transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-rose-300">
+                        <Heart className="w-3.5 h-3.5 fill-current" /> Sealed Love Note
+                      </div>
+                      <span className="text-sm shadow-sm p-1 rounded-full bg-rose-500/20 border border-rose-500/40 group-hover:scale-110 transition-transform">
+                        {sealEmoji}
+                      </span>
+                    </div>
+
+                    {note.openWhen && (
+                      <div className="text-[11px] text-rose-200/90 italic font-medium">
+                        💌 Open When: <span className="font-bold">"{note.openWhen}"</span>
+                      </div>
+                    )}
+
+                    <p className="font-serif italic text-sm sm:text-base leading-relaxed text-rose-100 line-clamp-3">
+                      "{note.note}"
+                    </p>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-rose-500/20 text-[11px]">
+                      <span className="text-rose-300 font-semibold flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Tap to read letter & react
+                      </span>
+                      {note.reactions && Object.keys(note.reactions).length > 0 && (
+                        <div className="flex items-center gap-1">
+                          {Object.entries(note.reactions).map(([uid, rx]) => (
+                            <span key={uid} className="text-xs bg-rose-500/20 px-1.5 py-0.5 rounded-lg">
+                              {rx}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <p className="font-serif italic text-sm sm:text-base leading-relaxed">
-                    "{message.loveNoteData.note}"
-                  </p>
+                );
+              })()}
+
+              {/* 4b. REALTIME COLLABORATIVE DOODLE CARD */}
+              {(message.type === 'doodle' || message.doodleData) && (() => {
+                const doodle: Partial<DoodleData> = message.doodleData || {
+                  canvasData: message.mediaUrl || '',
+                  canvasDataUrl: message.mediaUrl || '',
+                  prompt: message.text,
+                };
+                const imgUrl = doodle.canvasDataUrl || doodle.canvasData || message.mediaUrl || '';
+                const creator = doodle.drawnBy || doodle.senderName || message.senderName;
+                return (
+                  <div className="p-3.5 rounded-2xl bg-neutral-900/60 border border-purple-500/30 my-1 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
+                        <Palette className="w-3.5 h-3.5" /> Couple Artwork
+                      </div>
+                      {creator && (
+                        <span className="text-[10px] text-neutral-400">By {creator}</span>
+                      )}
+                    </div>
+
+                    {doodle.prompt && (
+                      <p className="text-xs text-rose-300 font-medium italic">
+                        🎯 Prompt: "{doodle.prompt}"
+                      </p>
+                    )}
+
+                    <div
+                      onClick={() => onOpenPhoto(imgUrl, doodle.prompt)}
+                      className="relative rounded-xl overflow-hidden border border-white/10 aspect-[3/2] bg-neutral-950 cursor-zoom-in group shadow-md"
+                    >
+                      <img
+                        src={imgUrl}
+                        alt="Couple Doodle"
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => onOpenPhoto(imgUrl, doodle.prompt)}
+                        className="text-xs text-purple-300 hover:text-white font-semibold flex items-center gap-1"
+                      >
+                        View Full Canvas
+                      </button>
+                      {onDoodleBack && (
+                        <button
+                          type="button"
+                          onClick={() => onDoodleBack(doodle.prompt)}
+                          className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1"
+                        >
+                          <Palette className="w-3 h-3" /> Doodle Back ✏️
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 4c. TIME CAPSULE CARD */}
+              {(message.type === 'time_capsule' || message.timeCapsuleData) && (() => {
+                const capsule = message.timeCapsuleData!;
+                const isReady =
+                  new Date(capsule.unlockDate) <= new Date() || capsule.isUnlocked;
+                const daysLeft = Math.max(
+                  0,
+                  Math.ceil(
+                    (new Date(capsule.unlockDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                  )
+                );
+                return (
+                  <div
+                    onClick={() => onOpenTimeCapsule && onOpenTimeCapsule(message)}
+                    className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/40 via-neutral-900/60 to-yellow-950/40 border border-amber-500/30 hover:border-amber-500/60 my-1 space-y-2 cursor-pointer transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                        {isReady ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}{' '}
+                        Time Capsule
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                        {isReady ? 'Ready to Open! ✨' : `Unlocks: ${capsule.unlockDate}`}
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-white font-serif">{capsule.title}</h4>
+
+                    {isReady ? (
+                      <p className="text-xs font-serif italic text-amber-100/90 line-clamp-2">
+                        "{capsule.note}"
+                      </p>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{daysLeft} days until ceremonial opening</span>
+                      </div>
+                    )}
+
+                    <div className="pt-1 text-[11px] text-amber-400 font-semibold flex items-center gap-1">
+                      <span>Tap to inspect time capsule vault ➔</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 4d. RELATIONSHIP MOOD PULSE CARD */}
+              {(message.type === 'mood_pulse' || message.moodPulseData) && (() => {
+                const pulse = message.moodPulseData!;
+                return (
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-br from-rose-950/40 via-neutral-900/60 to-indigo-950/40 border border-rose-500/30 my-1 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-300">
+                        <Activity className="w-3.5 h-3.5" /> Relationship Mood Pulse
+                      </div>
+                      <span className="text-lg">{pulse.emoji}</span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-sm text-white">Feeling {pulse.mood}</h4>
+                      {pulse.note && (
+                        <p className="text-xs italic text-neutral-300 mt-0.5">"{pulse.note}"</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-black/20 p-2 rounded-xl">
+                        <span className="text-[10px] text-neutral-400 block font-semibold">Energy</span>
+                        <div className="flex items-center gap-0.5 text-rose-400 mt-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Heart
+                              key={i}
+                              className={`w-3 h-3 ${i < pulse.energyLevel ? 'fill-current' : 'opacity-30'}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="bg-black/20 p-2 rounded-xl">
+                        <span className="text-[10px] text-neutral-400 block font-semibold">Love Language</span>
+                        <span className="text-rose-200 font-bold truncate block mt-0.5">
+                          {pulse.loveLanguageNeed}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-black/20 p-2 rounded-xl text-xs">
+                      <span className="text-[10px] text-neutral-400 block font-semibold">Craving</span>
+                      <span className="text-amber-200 font-medium">{pulse.craving}</span>
+                    </div>
+
+                    {!isMe && (
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => onSendEmpathyAction && onSendEmpathyAction('hug')}
+                          className="flex-1 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-[11px] border border-rose-500/30 flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          Send Hug 🫂
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onSendEmpathyAction && onSendEmpathyAction('coffee')}
+                          className="flex-1 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-[11px] border border-amber-500/30 flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          Send Coffee ☕
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onSendEmpathyAction && onSendEmpathyAction('love_note')}
+                          className="flex-1 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-bold text-[11px] border border-purple-500/30 flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          Send Note 💌
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* 4e. HAPTIC HUG & KISS CARD */}
+              {message.type === 'hug_kiss' && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-950/60 via-rose-950/60 to-red-950/60 border border-rose-500/40 my-1 space-y-2 text-center animate-pulse">
+                  <div className="text-2xl">💋🫂</div>
+                  <h4 className="font-bold text-sm text-white">
+                    {isMe ? 'You sent a warm, lingering hug & kiss' : `${partnerName} sent you a warm, lingering hug & kiss!`}
+                  </h4>
+                  {message.text && (
+                    <p className="text-xs text-rose-200 italic font-serif">"{message.text}"</p>
+                  )}
+                  {!isMe && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => onSendEmpathyAction && onSendEmpathyAction('hug')}
+                        className="px-4 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md cursor-pointer inline-flex items-center gap-1"
+                      >
+                        Send Hug Back 🫂
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -567,21 +839,45 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                 </div>
               )}
 
-              {/* 7. COUPLE POLL CARD */}
-              {message.pollData && (
-                <div className="p-3.5 rounded-2xl bg-white/10 dark:bg-slate-900/40 border border-white/20 my-1 space-y-2.5 select-none">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
-                    <BarChart3 className="w-3.5 h-3.5" /> Couple Poll
-                  </div>
-                  <h4 className="font-bold text-sm">{message.pollData.question}</h4>
+              {/* 7. COUPLE POLL CARD (Overhauled with Open/Close, Add Option & Live Bar) */}
+              {(message.pollData || message.poll) && (() => {
+                const poll = message.pollData || message.poll!;
+                const totalVotes = poll.options.reduce(
+                  (acc, o) => acc + (o.votes?.length || 0),
+                  0
+                );
+                return (
+                  <div className="p-3.5 rounded-2xl bg-white/10 dark:bg-slate-900/40 border border-white/20 my-1 space-y-2.5 select-none">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
+                        <BarChart3 className="w-3.5 h-3.5" /> Couple Poll
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {poll.isClosed ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-700 text-neutral-300 font-bold flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> Closed
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                            Active
+                          </span>
+                        )}
+                        {isMe && onClosePoll && (
+                          <button
+                            type="button"
+                            onClick={() => onClosePoll(message.id, !poll.isClosed)}
+                            className="text-[10px] text-neutral-400 hover:text-white underline cursor-pointer"
+                          >
+                            {poll.isClosed ? 'Reopen' : 'Close'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-                  <div className="space-y-1.5">
-                    {(() => {
-                      const totalVotes = message.pollData.options.reduce(
-                        (acc, o) => acc + (o.votes?.length || 0),
-                        0
-                      );
-                      return message.pollData.options.map((opt) => {
+                    <h4 className="font-bold text-sm">{poll.question}</h4>
+
+                    <div className="space-y-1.5">
+                      {poll.options.map((opt) => {
                         const hasVoted = opt.votes?.includes(myProfile.uid);
                         const count = opt.votes?.length || 0;
                         const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
@@ -589,11 +885,12 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                           <button
                             key={opt.id}
                             type="button"
+                            disabled={poll.isClosed}
                             onClick={() => onVotePoll(message.id, opt.id)}
-                            className={`w-full p-2 rounded-xl text-left text-xs border relative overflow-hidden transition-colors cursor-pointer ${
+                            className={`w-full p-2.5 rounded-xl text-left text-xs border relative overflow-hidden transition-all cursor-pointer disabled:cursor-default ${
                               hasVoted
-                                ? 'border-emerald-400 bg-emerald-500/20 font-bold'
-                                : 'border-white/20 bg-black/10 hover:bg-black/20'
+                                ? 'border-emerald-400 bg-emerald-500/20 font-bold ring-1 ring-emerald-400/40'
+                                : 'border-white/20 bg-black/15 hover:bg-black/25'
                             }`}
                           >
                             <div
@@ -602,18 +899,72 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                             />
                             <div className="relative flex items-center justify-between">
                               <span className="flex items-center gap-1.5">
-                                {hasVoted && <Check className="w-3 h-3 text-emerald-400" />}
+                                {hasVoted && <Check className="w-3.5 h-3.5 text-emerald-400" />}
                                 {opt.text}
                               </span>
-                              <span className="text-[10px] opacity-80">{pct}% ({count})</span>
+                              <span className="text-[11px] font-semibold opacity-90">
+                                {pct}% ({count})
+                              </span>
                             </div>
                           </button>
                         );
-                      });
-                    })()}
+                      })}
+                    </div>
+
+                    {/* Add option to poll */}
+                    {!poll.isClosed && (
+                      <div className="pt-1">
+                        {!showAddOptionInput ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowAddOptionInput(true)}
+                            className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" /> Add another option...
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={newPollOptionText}
+                              onChange={(e) => setNewPollOptionText(e.target.value)}
+                              placeholder="New option..."
+                              className="flex-1 px-2.5 py-1.5 rounded-xl bg-black/30 border border-white/20 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && newPollOptionText.trim() && onAddPollOption) {
+                                  onAddPollOption(message.id, newPollOptionText.trim());
+                                  setNewPollOptionText('');
+                                  setShowAddOptionInput(false);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (newPollOptionText.trim() && onAddPollOption) {
+                                  onAddPollOption(message.id, newPollOptionText.trim());
+                                  setNewPollOptionText('');
+                                  setShowAddOptionInput(false);
+                                }
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                            >
+                              Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddOptionInput(false)}
+                              className="p-1.5 text-neutral-400 hover:text-white"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* 8. COUPLE QUESTION CARD */}
               {message.questionData && (

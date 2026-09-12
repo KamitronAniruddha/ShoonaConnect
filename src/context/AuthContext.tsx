@@ -674,6 +674,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error('You cannot request to join your own space.');
     }
 
+    // Gender/Couple Validation Logic
+    const { data: creatorProfileSnap } = await supabase
+      .from('profiles')
+      .select('gender')
+      .eq('id', coupleData.creatorId)
+      .maybeSingle();
+      
+    const creatorGender = creatorProfileSnap?.gender;
+    const myGender = profileOverride?.gender || userProfile.gender;
+    
+    if (creatorGender === 'male' && myGender === 'male') {
+      throw new Error('This website is for couples.');
+    }
+    if (creatorGender === 'female' && myGender === 'female') {
+      // User requirement: "If both are female, show Lesbian and delete data"
+      await supabase.from('profiles').delete().eq('id', currentUser.uid);
+      await supabase.auth.signOut();
+      throw new Error('Lesbian (Your data has been deleted per validation rules)');
+    }
+
     const now = new Date().toISOString();
     const finalName = (profileOverride?.displayName || userProfile.displayName || currentUser.displayName || 'Soulmate').trim();
     const finalNickname = (profileOverride?.nickname || userProfile.nickname || '').trim();
@@ -741,6 +761,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const requesterId = coupleData.pendingJoinRequest.requesterId;
+    // Gender/Couple Validation Logic
+    const { data: requesterProfileSnap } = await supabase
+      .from('profiles')
+      .select('gender')
+      .eq('id', requesterId)
+      .maybeSingle();
+      
+    const requesterGender = requesterProfileSnap?.gender;
+    const hostGender = userProfile.gender;
+    
+    const isSameGenderMale = hostGender === 'male' && requesterGender === 'male';
+    const isSameGenderFemale = hostGender === 'female' && requesterGender === 'female';
+    const isStrictHetero = (hostGender === 'male' && requesterGender === 'female') || (hostGender === 'female' && requesterGender === 'male');
+    
+    if (isSameGenderMale) {
+      throw new Error('This website is for couples.');
+    }
+    if (isSameGenderFemale) {
+      throw new Error('Lesbian');
+    }
+    if (!isStrictHetero) {
+      throw new Error('This website is restricted to one male and one female couple configurations.');
+    }
+
     const requesterName =
       coupleData.pendingJoinRequest.requesterNickname ||
       coupleData.pendingJoinRequest.requesterName ||
@@ -879,6 +923,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const coupleData = coupleRowToCouple(snap);
     if (coupleData.userIds.length >= 2) {
       throw new Error('This couple space is already full.');
+    }
+
+    // Gender/Couple Validation Logic
+    const { data: creatorProfileSnap } = await supabase
+      .from('profiles')
+      .select('gender')
+      .eq('id', coupleData.creatorId)
+      .maybeSingle();
+      
+    const creatorGender = creatorProfileSnap?.gender;
+    const myGender = userProfile.gender;
+    
+    const isSameGenderMale = creatorGender === 'male' && myGender === 'male';
+    const isSameGenderFemale = creatorGender === 'female' && myGender === 'female';
+    const isStrictHetero = (creatorGender === 'male' && myGender === 'female') || (creatorGender === 'female' && myGender === 'male');
+    
+    if (isSameGenderMale) {
+      throw new Error('This website is for couples.');
+    }
+    if (isSameGenderFemale) {
+      await supabase.from('profiles').delete().eq('id', currentUser.uid);
+      await supabase.auth.signOut();
+      throw new Error('Lesbian');
+    }
+    if (!isStrictHetero) {
+      throw new Error('This website is restricted to one male and one female couple configurations.');
     }
 
     const now = new Date().toISOString();

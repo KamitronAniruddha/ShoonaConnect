@@ -29,6 +29,7 @@ import {
   ZoomIn,
   UserCheck,
   Award,
+  Droplet,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { PartnerProfileModal } from './PartnerProfileModal';
@@ -378,15 +379,18 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
   };
 
   // Birthday resolution for both partners
+  const isCreator = couple?.creatorId === myUid;
+  
   const myBirthday =
     userProfile?.birthday ||
     (myUid ? couple?.birthdays?.[myUid] : undefined) ||
-    couple?.partner1Birthday;
+    (isCreator ? couple?.partner1Birthday : couple?.partner2Birthday);
+    
   const partnerBirthday =
     partnerProfile?.birthday ||
     (partnerUid ? couple?.birthdays?.[partnerUid] : undefined) ||
     couple?.birthdays?.['partner'] ||
-    couple?.partner2Birthday;
+    (isCreator ? couple?.partner2Birthday : couple?.partner1Birthday);
 
   const handleSaveDatingTime = async (dateStr: string, timeStr: string) => {
     await updateCoupleSettings({
@@ -405,12 +409,19 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
     const updates: Record<string, any> = {};
     const currentBirthdays = { ...(couple?.birthdays || {}) };
 
+    // Ensure we correctly map to partner1 / partner2 based on who is creator
+    const isCreator = couple?.creatorId === myUid;
+
     if (data.myBirthday) {
       await updateUserProfileData({ birthday: data.myBirthday });
       if (myUid) {
         currentBirthdays[myUid] = data.myBirthday;
       }
-      updates.partner1Birthday = data.myBirthday;
+      if (isCreator) {
+        updates.partner1Birthday = data.myBirthday;
+      } else {
+        updates.partner2Birthday = data.myBirthday;
+      }
     }
 
     if (data.partnerBirthday) {
@@ -421,9 +432,15 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
           // ignore if partner profile not initialized yet
         }
         currentBirthdays[partnerUid] = data.partnerBirthday;
+      } else {
+        currentBirthdays['partner'] = data.partnerBirthday;
       }
-      currentBirthdays['partner'] = data.partnerBirthday;
-      updates.partner2Birthday = data.partnerBirthday;
+      
+      if (isCreator) {
+        updates.partner2Birthday = data.partnerBirthday;
+      } else {
+        updates.partner1Birthday = data.partnerBirthday;
+      }
     }
 
     updates.birthdays = currentBirthdays;
@@ -863,7 +880,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 px-1">
           Quick Actions
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
           <button
             id="action-chat"
             onClick={() => setActiveTab('chat')}
@@ -945,6 +962,20 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
             <div>
               <div className="text-xs font-bold text-slate-800 dark:text-white">Shared Notes</div>
               <div className="text-[10px] text-slate-400 dark:text-slate-500">Lists & ideas</div>
+            </div>
+          </button>
+
+          <button
+            id="action-period"
+            onClick={() => setActiveTab('period')}
+            className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-rose-100 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-rose-300 dark:hover:border-rose-800 transition-all flex items-center gap-3 text-left group cursor-pointer"
+          >
+            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Droplet className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-800 dark:text-white">Period Tracker</div>
+              <div className="text-[10px] text-slate-400 dark:text-slate-500">Advanced Cycle Stats</div>
             </div>
           </button>
         </div>

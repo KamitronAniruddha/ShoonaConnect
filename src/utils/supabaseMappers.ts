@@ -151,12 +151,23 @@ export function messageRowToMessage(row: any): Message {
     dateInvite: row.date_invite || undefined,
     gameChallenge: row.game_challenge || undefined,
     poll: row.poll || undefined,
+    pollData: row.poll || undefined,
     sharedList: row.shared_list || undefined,
+    sharedListData: row.shared_list || undefined,
     sharedNote: row.shared_note || undefined,
+    sharedNoteData: row.shared_note || undefined,
     loveNote: row.love_note || undefined,
+    loveNoteData: row.love_note || undefined,
     countdown: row.countdown || undefined,
+    countdownData: row.countdown || undefined,
+    questionData: row.question_data || undefined,
+    doodleData: row.doodle_data || undefined,
+    timeCapsuleData: row.time_capsule_data || undefined,
+    moodPulseData: row.mood_pulse_data || undefined,
     location: row.location || undefined,
+    locationData: row.location || undefined,
     reminder: row.reminder || undefined,
+    reminderData: row.reminder || undefined,
     createdAt: row.created_at,
   };
 }
@@ -178,13 +189,17 @@ export function messageToRow(msg: Partial<Message>): any {
   if (msg.readBy !== undefined) row.read_by = msg.readBy;
   if (msg.dateInvite !== undefined) row.date_invite = msg.dateInvite;
   if (msg.gameChallenge !== undefined) row.game_challenge = msg.gameChallenge;
-  if (msg.poll !== undefined) row.poll = msg.poll;
-  if (msg.sharedList !== undefined) row.shared_list = msg.sharedList;
-  if (msg.sharedNote !== undefined) row.shared_note = msg.sharedNote;
-  if (msg.loveNote !== undefined) row.love_note = msg.loveNote;
-  if (msg.countdown !== undefined) row.countdown = msg.countdown;
-  if (msg.location !== undefined) row.location = msg.location;
-  if (msg.reminder !== undefined) row.reminder = msg.reminder;
+  if (msg.poll !== undefined || msg.pollData !== undefined) row.poll = msg.poll || msg.pollData;
+  if (msg.sharedList !== undefined || msg.sharedListData !== undefined) row.shared_list = msg.sharedList || msg.sharedListData;
+  if (msg.sharedNote !== undefined || msg.sharedNoteData !== undefined) row.shared_note = msg.sharedNote || msg.sharedNoteData;
+  if (msg.loveNote !== undefined || msg.loveNoteData !== undefined) row.love_note = msg.loveNote || msg.loveNoteData;
+  if (msg.countdown !== undefined || msg.countdownData !== undefined) row.countdown = msg.countdown || msg.countdownData;
+  if (msg.questionData !== undefined) row.question_data = msg.questionData;
+  if (msg.doodleData !== undefined) row.doodle_data = msg.doodleData;
+  if (msg.timeCapsuleData !== undefined) row.time_capsule_data = msg.timeCapsuleData;
+  if (msg.moodPulseData !== undefined) row.mood_pulse_data = msg.moodPulseData;
+  if (msg.location !== undefined || msg.locationData !== undefined) row.location = msg.location || msg.locationData;
+  if (msg.reminder !== undefined || msg.reminderData !== undefined) row.reminder = msg.reminder || msg.reminderData;
   if (msg.createdAt !== undefined) row.created_at = msg.createdAt;
   return row;
 }

@@ -20,6 +20,11 @@ import {
   CornerUpLeft,
   Square,
   Plus,
+  Palette,
+  Activity,
+  Flame,
+  MailOpen,
+  Archive,
 } from 'lucide-react';
 import { ReplyPreview } from '../../types';
 import { ChatEmojiPicker } from './ChatEmojiPicker';
@@ -43,6 +48,12 @@ interface ChatComposerProps {
       | 'question'
       | 'connect_ai'
       | 'location'
+      | 'doodle'
+      | 'time_capsule'
+      | 'mood_pulse'
+      | 'love_notes_vault'
+      | 'love_spark'
+      | 'hug_kiss'
   ) => void;
   onTyping: (isTyping: boolean) => void;
   showSmartReplies?: boolean;
@@ -309,11 +320,17 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         <div className="flex items-end gap-2">
           {/* Quick Actions (+) Button */}
           <div className="relative">
+            {showActionsMenu && (
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setShowActionsMenu(false)}
+              />
+            )}
             <button
               type="button"
               onClick={() => setShowActionsMenu(!showActionsMenu)}
               title="Add Love Card, Date, Poll..."
-              className={`p-2 rounded-full transition-transform cursor-pointer ${
+              className={`p-2 rounded-full transition-transform cursor-pointer relative z-40 ${
                 showActionsMenu
                   ? 'bg-rose-500 text-white rotate-45'
                   : 'bg-rose-50 dark:bg-slate-800 text-rose-500 hover:bg-rose-100 dark:hover:bg-slate-700'
@@ -324,12 +341,18 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
             {/* Actions Menu Popover */}
             {showActionsMenu && (
-              <div className="absolute bottom-12 left-0 w-64 p-2 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl border border-rose-100 dark:border-slate-700 z-40 space-y-1 animate-in zoom-in-95">
+              <div className="absolute bottom-12 left-0 w-72 max-w-[calc(100vw-2rem)] max-h-[55vh] overflow-y-auto p-2 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl border border-rose-100 dark:border-slate-700 z-40 space-y-1 animate-in zoom-in-95">
                 {[
+                  { id: 'doodle', label: 'Realtime Doodle 🎨', desc: 'Live collaborative drawing & send', icon: Palette, color: 'text-purple-500' },
+                  { id: 'mood_pulse', label: 'Mood Pulse 💓', desc: 'Emotional check-in & love language', icon: Activity, color: 'text-rose-500' },
+                  { id: 'time_capsule', label: 'Time Capsule ⏳', desc: 'Seal message for future date', icon: Clock, color: 'text-amber-500' },
+                  { id: 'love_spark', label: 'Love Sparks ✨', desc: 'Romantic sparks & date generators', icon: Flame, color: 'text-orange-500' },
+                  { id: 'love_notes_vault', label: 'Love Letters Vault 💌', desc: 'Wax-sealed love notes archive', icon: MailOpen, color: 'text-pink-500' },
+                  { id: 'hug_kiss', label: 'Send Lingering Hug 🫂', desc: 'Haptic heartbeat vibration', icon: Heart, color: 'text-red-500' },
                   { id: 'love_note', label: 'Love Note 💕', desc: 'Heartfelt card with custom style', icon: Heart, color: 'text-rose-500' },
+                  { id: 'poll', label: 'Couple Poll 📊', desc: 'Live voting for plans & choices', icon: BarChart3, color: 'text-emerald-500' },
                   { id: 'date_invite', label: 'Plan Date 📅', desc: 'Invite partner with Accept button', icon: Calendar, color: 'text-amber-500' },
                   { id: 'game_challenge', label: 'Play Game 🎮', desc: 'Chess or Tic-Tac-Toe duel', icon: Gamepad2, color: 'text-indigo-500' },
-                  { id: 'poll', label: 'Couple Poll 📊', desc: 'Live voting for plans & choices', icon: BarChart3, color: 'text-emerald-500' },
                   { id: 'shared_list', label: 'Shared List 🛒', desc: 'Interactive shopping & checklists', icon: CheckSquare, color: 'text-sky-500' },
                   { id: 'shared_note', label: 'Shared Note 📝', desc: 'Collaborative note in chat', icon: FileText, color: 'text-teal-500' },
                   { id: 'question', label: 'Ask Partner ❓', desc: 'Connection question with answers', icon: HelpCircle, color: 'text-fuchsia-500' },
@@ -376,35 +399,43 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             title="Attach photo"
-            className="p-2 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
           >
-            <ImageIcon className="w-5 h-5" />
+            <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           {/* Emoji Picker toggle */}
-          <div className="relative">
+          <div className="relative shrink-0">
+            {showEmojiPicker && (
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setShowEmojiPicker(false)}
+              />
+            )}
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               title="Emoji"
-              className="p-2 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer relative z-40"
             >
-              <Smile className="w-5 h-5" />
+              <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             {showEmojiPicker && (
-              <ChatEmojiPicker
-                onSelectEmoji={(em) => {
-                  setText((prev) => prev + em);
-                  setShowEmojiPicker(false);
-                }}
-                onClose={() => setShowEmojiPicker(false)}
-              />
+              <div className="relative z-40">
+                <ChatEmojiPicker
+                  onSelectEmoji={(em) => {
+                    setText((prev) => prev + em);
+                    setShowEmojiPicker(false);
+                  }}
+                  onClose={() => setShowEmojiPicker(false)}
+                />
+              </div>
             )}
           </div>
 
           {/* Text Input area */}
-          <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-3xl p-2 px-3 border border-transparent focus-within:border-rose-300 dark:focus-within:border-rose-500/50 transition-colors flex items-center">
+          <div className="flex-1 min-w-0 bg-slate-100 dark:bg-slate-800 rounded-3xl p-2 px-3 border border-transparent focus-within:border-rose-300 dark:focus-within:border-rose-500/50 transition-colors flex items-center">
             <textarea
               ref={textareaRef}
               rows={1}
@@ -421,7 +452,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             <button
               type="button"
               onClick={handleSend}
-              className="p-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-300 dark:shadow-none transition-transform hover:scale-105 cursor-pointer shrink-0"
+              className="p-2 sm:p-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-300 dark:shadow-none transition-transform hover:scale-105 cursor-pointer shrink-0"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -430,7 +461,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               type="button"
               onClick={startVoiceRecording}
               title="Hold or tap to record voice note"
-              className="p-2.5 rounded-full bg-rose-50 dark:bg-slate-800 text-rose-500 hover:bg-rose-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
+              className="p-2 sm:p-2.5 rounded-full bg-rose-50 dark:bg-slate-800 text-rose-500 hover:bg-rose-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shrink-0"
             >
               <Mic className="w-4 h-4" />
             </button>
