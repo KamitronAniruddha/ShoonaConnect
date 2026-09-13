@@ -94,6 +94,12 @@ const SANCTUARY_THEMES = [
   { id: 'midnight', name: 'Midnight Starlight', color: 'from-indigo-600 to-purple-900', hex: '#6366f1' },
   { id: 'emerald', name: 'Emerald Haven', color: 'from-emerald-600 to-teal-600', hex: '#059669' },
   { id: 'lavender', name: 'Lavender Mist', color: 'from-purple-500 to-pink-500', hex: '#a855f7' },
+  { id: 'starlight_diamond', name: 'Starlight Diamond 💎', color: 'from-slate-900 to-sky-500', hex: '#38bdf8' },
+  { id: 'royal_crimson', name: 'Royal Crimson 🍷', color: 'from-rose-950 to-amber-500', hex: '#e11d48' },
+  { id: 'amethyst_dream', name: 'Amethyst Dream 🔮', color: 'from-purple-950 to-pink-500', hex: '#c084fc' },
+  { id: 'velvet_noir', name: 'Velvet Noir 💕', color: 'from-zinc-950 to-rose-600', hex: '#ff2d78' },
+  { id: 'celestial_aurora', name: 'Celestial Aurora 🌌', color: 'from-slate-950 to-cyan-500', hex: '#06b6d4' },
+  { id: 'cherry_blossom', name: 'Sakura Kyoto 🌸', color: 'from-rose-700 to-amber-500', hex: '#fb7185' },
 ];
 
 export const OnboardingView: React.FC = () => {

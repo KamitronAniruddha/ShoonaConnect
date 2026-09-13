@@ -77,7 +77,18 @@ export interface Couple {
   relationshipStatus?: 'dating' | 'in_relationship' | 'engaged' | 'married' | 'long_distance';
   relationshipStory?: string;
   favoriteSong?: string;
-  theme?: 'rose' | 'sunset' | 'midnight' | 'emerald' | 'lavender' | 'velvet_noir' | 'celestial_aurora' | 'cherry_blossom';
+  theme?:
+    | 'rose'
+    | 'sunset'
+    | 'midnight'
+    | 'emerald'
+    | 'lavender'
+    | 'velvet_noir'
+    | 'celestial_aurora'
+    | 'cherry_blossom'
+    | 'starlight_diamond'
+    | 'royal_crimson'
+    | 'amethyst_dream';
   wallpaper?: string;
   pinLock?: string | null;
   customSymbolP1?: string;
@@ -271,6 +282,7 @@ export interface Message {
   isEdited?: boolean;
   isPinned?: boolean;
   isStarred?: boolean;
+  isWhisper?: boolean;
   readBy?: string[];
   deletedForEveryone?: boolean;
   deletedFor?: string[];

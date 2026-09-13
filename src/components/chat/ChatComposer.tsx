@@ -25,6 +25,7 @@ import {
   Flame,
   MailOpen,
   Archive,
+  EyeOff,
 } from 'lucide-react';
 import { ReplyPreview } from '../../types';
 import { ChatEmojiPicker } from './ChatEmojiPicker';
@@ -81,6 +82,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   const [text, setText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [isWhisperMode, setIsWhisperMode] = useState(false);
 
   // Image preview state
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -205,8 +207,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
     if (!text.trim()) return;
 
-    onSendMessage(text.trim());
+    const messageText = isWhisperMode ? `[SECRET WHISPER] ${text.trim()}` : text.trim();
+    onSendMessage(messageText);
     setText('');
+    setIsWhisperMode(false);
     try {
       localStorage.removeItem(`shoona_draft_${coupleId}`);
     } catch {
@@ -288,6 +292,23 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         </div>
       )}
 
+      {/* Secret Whisper Mode Banner */}
+      {isWhisperMode && (
+        <div className="mb-2 p-2 rounded-2xl bg-gradient-to-r from-rose-500/15 via-pink-500/15 to-purple-500/15 border border-rose-300 dark:border-rose-800 flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-300 text-xs font-bold px-2">
+            <EyeOff className="w-3.5 h-3.5" />
+            <span>Secret Whisper Mode Active • Message will be frosted until tapped (10s peek)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsWhisperMode(false)}
+            className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Voice Recording Active Bar */}
       {isRecording ? (
         <div className="flex items-center justify-between p-2 rounded-2xl bg-rose-500 text-white animate-in zoom-in-95">
@@ -342,6 +363,25 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {/* Actions Menu Popover */}
             {showActionsMenu && (
               <div className="absolute bottom-12 left-0 w-72 max-w-[calc(100vw-2rem)] max-h-[55vh] overflow-y-auto p-2 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl border border-rose-100 dark:border-slate-700 z-40 space-y-1 animate-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsWhisperMode(true);
+                    setShowActionsMenu(false);
+                  }}
+                  className="w-full text-left p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-slate-700/60 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 text-rose-500">
+                    <EyeOff className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs block text-slate-800 dark:text-white">
+                      Secret Whisper 🤫
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">Frosted message with 10s tap-to-peek</span>
+                  </div>
+                </button>
+
                 {[
                   { id: 'doodle', label: 'Realtime Doodle 🎨', desc: 'Live collaborative drawing & send', icon: Palette, color: 'text-purple-500' },
                   { id: 'mood_pulse', label: 'Mood Pulse 💓', desc: 'Emotional check-in & love language', icon: Activity, color: 'text-rose-500' },

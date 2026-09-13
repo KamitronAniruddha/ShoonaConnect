@@ -59,7 +59,7 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
             </div>
           </div>
           <p className="text-xs text-white/90 mt-2">
-            Choose from curated romantic palettes including our new dark velvet noir, celestial aurora, and sakura themes.
+            Choose from 11 curated romantic palettes including our new Starlight Diamond, Royal Crimson & Gold, and Amethyst Dream themes.
           </p>
         </div>
 
@@ -67,7 +67,14 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[65vh] overflow-y-auto">
           {Object.entries(THEMES).map(([key, t]) => {
             const isSelected = currentTheme === key;
-            const isNew = key === 'velvet_noir' || key === 'celestial_aurora' || key === 'cherry_blossom';
+            const isNew = [
+              'starlight_diamond',
+              'royal_crimson',
+              'amethyst_dream',
+              'velvet_noir',
+              'celestial_aurora',
+              'cherry_blossom',
+            ].includes(key);
 
             return (
               <button

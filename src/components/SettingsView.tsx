@@ -941,7 +941,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {Object.entries(THEMES).map(([key, t]) => {
               const isSelected = selectedTheme === key;
-              const isNew = ['velvet_noir', 'celestial_aurora', 'cherry_blossom'].includes(key);
+              const isNew = [
+                'starlight_diamond',
+                'royal_crimson',
+                'amethyst_dream',
+                'velvet_noir',
+                'celestial_aurora',
+                'cherry_blossom',
+              ].includes(key);
               return (
                 <button
                   key={key}

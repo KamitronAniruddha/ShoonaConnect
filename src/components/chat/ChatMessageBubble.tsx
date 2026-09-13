@@ -33,6 +33,7 @@ import {
   Palette,
   Plus,
   Feather,
+  EyeOff,
   X,
 } from 'lucide-react';
 import { Message, UserProfile, ChatThemeKey, DoodleData, TimeCapsuleData, MoodPulseData } from '../../types';
@@ -114,6 +115,31 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
   const [audioProgress, setAudioProgress] = useState(0);
   const [audioCurrentTime, setAudioCurrentTime] = useState('0:00');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Secret Whisper Reveal state
+  const isSecretWhisper = Boolean(
+    message.text && (message.text.startsWith('[SECRET WHISPER]') || message.isWhisper)
+  );
+  const [isWhisperRevealed, setIsWhisperRevealed] = useState(false);
+  const [whisperCountdown, setWhisperCountdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (whisperCountdown === null) return;
+    if (whisperCountdown <= 0) {
+      setIsWhisperRevealed(false);
+      setWhisperCountdown(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setWhisperCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [whisperCountdown]);
+
+  const handlePeekWhisper = () => {
+    setIsWhisperRevealed(true);
+    setWhisperCountdown(10);
+  };
 
   // Audio handling
   useEffect(() => {
@@ -450,11 +476,11 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
 
               {/* 3. VOICE NOTE MESSAGE */}
               {message.mediaType === 'audio' && message.mediaUrl && (
-                <div className="flex items-center gap-2.5 py-1 select-none min-w-[200px]">
+                <div className="flex items-center gap-2.5 py-1 select-none min-w-[210px]">
                   <button
                     type="button"
                     onClick={togglePlayAudio}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow-xs shrink-0 cursor-pointer transition-transform hover:scale-105 ${
+                    className={`w-9 h-9 rounded-full flex items-center justify-center shadow-xs shrink-0 cursor-pointer transition-transform hover:scale-105 active:scale-95 ${
                       isMe
                         ? 'bg-white text-rose-600'
                         : 'bg-rose-500 text-white'
@@ -464,24 +490,34 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
                   </button>
 
                   <div className="flex-1 space-y-1">
-                    {/* Simulated Waveform / Progress bar */}
-                    <div className="w-full bg-black/20 dark:bg-white/20 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-150 ${
-                          isMe ? 'bg-white' : 'bg-rose-500'
-                        }`}
-                        style={{ width: `${audioProgress}%` }}
-                      />
+                    {/* Animated Acoustic Waveform */}
+                    <div className="flex items-center gap-0.5 h-6 px-1">
+                      {[10, 16, 22, 14, 20, 24, 18, 12, 22, 19, 14, 26, 16, 20, 16, 10, 18, 22, 14, 10].map((barH, idx) => {
+                        const barPct = (idx / 20) * 100;
+                        const isPassed = audioProgress >= barPct;
+                        return (
+                          <div
+                            key={idx}
+                            className={`w-1 rounded-full transition-all duration-150 ${
+                              isPassed
+                                ? isMe ? 'bg-white' : 'bg-rose-500'
+                                : isMe ? 'bg-white/40' : 'bg-rose-200 dark:bg-slate-600'
+                            } ${isPlayingAudio && isPassed ? 'scale-y-110' : ''}`}
+                            style={{ height: `${barH}px` }}
+                          />
+                        );
+                      })}
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] opacity-80">
-                      <span>{audioCurrentTime}</span>
+                    <div className="flex items-center justify-between text-[10px] opacity-85">
+                      <span className="font-mono font-medium">{audioCurrentTime}</span>
                       <button
                         type="button"
                         onClick={cycleSpeed}
-                        className="font-bold px-1 rounded hover:bg-black/10 transition-colors"
+                        className="font-bold px-1.5 py-0.5 rounded-md bg-black/10 dark:bg-white/10 hover:bg-black/20 transition-colors cursor-pointer"
+                        title="Change audio speed"
                       >
-                        {audioPlaybackRate}x
+                        {audioPlaybackRate}x Speed
                       </button>
                     </div>
                   </div>
@@ -1094,9 +1130,44 @@ export const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({
 
               {/* Text content */}
               {message.text && !message.loveNoteData && (
-                <div className="break-words leading-relaxed">
-                  {formatMessageText(message.text)}
-                </div>
+                isSecretWhisper ? (
+                  <div className="my-1">
+                    {!isWhisperRevealed ? (
+                      <div
+                        onClick={handlePeekWhisper}
+                        className="p-3 rounded-2xl bg-rose-500/10 dark:bg-rose-950/40 border border-rose-500/30 cursor-pointer select-none text-center space-y-1 hover:bg-rose-500/20 transition-all"
+                      >
+                        <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-rose-500 dark:text-rose-300">
+                          <EyeOff className="w-4 h-4" />
+                          <span>Secret Whisper • Tap to Peek (10s)</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400">Frosted for romantic privacy until you tap</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 animate-in fade-in">
+                        <div className="flex items-center justify-between text-[10px] text-rose-400 font-bold">
+                          <span className="flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" /> Secret Whisper Revealed
+                          </span>
+                          <span>Auto-blur in {whisperCountdown}s</span>
+                        </div>
+                        <div className="w-full bg-rose-200 dark:bg-rose-900/60 h-1 rounded-full overflow-hidden">
+                          <div
+                            className="bg-rose-500 h-full transition-all duration-1000"
+                            style={{ width: `${((whisperCountdown || 0) / 10) * 100}%` }}
+                          />
+                        </div>
+                        <div className="break-words leading-relaxed font-medium">
+                          {formatMessageText(message.text.replace('[SECRET WHISPER]', '').trim())}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="break-words leading-relaxed [overflow-wrap:anywhere]">
+                    {formatMessageText(message.text)}
+                  </div>
+                )
               )}
             </>
           )}

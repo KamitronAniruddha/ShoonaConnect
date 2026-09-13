@@ -44,6 +44,25 @@ import { SanctuaryAchievementsCard } from './SanctuaryAchievementsCard';
 import { PetNameCustomizerModal } from './PetNameCustomizerModal';
 import { usePresence } from '../hooks/usePresence';
 
+import { RomanticSoundscapesWidget } from './dashboard/RomanticSoundscapesWidget';
+import { HeartbeatPulseButton } from './dashboard/HeartbeatPulseButton';
+import { LoveTapMorsePad } from './dashboard/LoveTapMorsePad';
+import { DailyFortuneCapsule } from './dashboard/DailyFortuneCapsule';
+import { QuickTimeCapsuleWidget } from './dashboard/QuickTimeCapsuleWidget';
+import { RelationshipRadarWidget } from './dashboard/RelationshipRadarWidget';
+import { CoupleMoodAuraWidget } from './dashboard/CoupleMoodAuraWidget';
+import { AffectionBankWidget } from './dashboard/AffectionBankWidget';
+import { LoveDiceDecider } from './dashboard/LoveDiceDecider';
+import { SanctuaryNightLightModal } from './dashboard/SanctuaryNightLightModal';
+import { TogetherLoungeModal } from './dashboard/TogetherLoungeModal';
+import { HeartReactionCannon } from './dashboard/HeartReactionCannon';
+import { DeepSparkQuestionsModal } from './dashboard/DeepSparkQuestionsModal';
+import { DailyLoveVowBanner } from './dashboard/DailyLoveVowBanner';
+import { CoupleBucketChecklistWidget } from './dashboard/CoupleBucketChecklistWidget';
+import { MilestoneCountdownRings } from './dashboard/MilestoneCountdownRings';
+import { GratitudeJarWidget } from './dashboard/GratitudeJarWidget';
+import { EmergencyHugBeacon } from './dashboard/EmergencyHugBeacon';
+
 interface HomeViewProps {
   setActiveTab: (tab: ActiveTab) => void;
   onQuickAction?: (action: string) => void;
@@ -93,6 +112,11 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
     targetName: '',
   });
 
+  // Interactive sanctuary feature modals
+  const [showNightLight, setShowNightLight] = useState(false);
+  const [showTogetherLounge, setShowTogetherLounge] = useState(false);
+  const [showDeepSpark, setShowDeepSpark] = useState(false);
+
   const daysTogether = calculateDaysTogether(couple?.anniversaryDate);
   const todayQuestion = getTodayQuestion();
   const themeKey = couple?.theme || 'rose';
@@ -101,6 +125,28 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
   const coupleId = couple?.id;
   const myUid = userProfile?.uid;
   const partnerUid = partnerProfile?.uid;
+
+  const handleSendToChat = async (text: string) => {
+    if (!coupleId || !userProfile) return;
+    try {
+      await supabase.from('messages').insert({
+        couple_id: coupleId,
+        sender_id: userProfile.uid,
+        sender_name: userProfile.displayName || 'Me',
+        sender_photo: userProfile.photoURL,
+        text,
+        type: 'text',
+        created_at: new Date().toISOString(),
+      });
+      confetti({
+        particleCount: 20,
+        spread: 45,
+        origin: { y: 0.8 },
+      });
+    } catch (err) {
+      console.error('Failed to dispatch message to chat:', err);
+    }
+  };
 
   // Real-time zero-lag online presence tracking
   const { isPartnerOnline, partnerStatusText } = usePresence({
@@ -1124,6 +1170,137 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
         </div>
       </div>
 
+      {/* ========================================================================= */}
+      {/* 20 INTIMATE LOVE SUITE & ADVANCED INTERACTIVE FEATURES HUB */}
+      {/* ========================================================================= */}
+      <div className="space-y-4">
+        {/* Priority Emergency SOS Hug Beacon */}
+        <EmergencyHugBeacon
+          partnerName={partnerProfile?.displayName || 'Partner'}
+          myName={userProfile?.displayName || 'Me'}
+          onSendAlert={handleSendToChat}
+        />
+
+        {/* Milestone Countdown Rings & Anniversary Horizons */}
+        <MilestoneCountdownRings
+          relationshipStartDate={couple?.anniversaryDate || '2024-02-14'}
+          partnerName={partnerProfile?.displayName || 'Partner'}
+        />
+
+        {/* Daily Love Vow Commitment Banner */}
+        <DailyLoveVowBanner
+          partnerName={partnerProfile?.displayName || 'Partner'}
+          myName={userProfile?.displayName || 'Me'}
+          onSendVow={handleSendToChat}
+        />
+
+        {/* Quick Launchpad Action Bar for Immersive Modals & Cannon */}
+        <div className="p-3 bg-gradient-to-r from-rose-50 via-pink-50 to-purple-50 dark:from-slate-800/80 dark:to-slate-800/40 rounded-2xl border border-rose-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-rose-500 shrink-0" />
+            <span className="text-xs font-bold text-slate-800 dark:text-white truncate">
+              Instant Sanctuary Portals & Celebrations
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              type="button"
+              onClick={() => setShowTogetherLounge(true)}
+              className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap"
+            >
+              <span>🍿 Virtual Lounge</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowNightLight(true)}
+              className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap"
+            >
+              <span>🌙 Bedtime Orb</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeepSpark(true)}
+              className="flex-1 sm:flex-initial px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap"
+            >
+              <span>💬 Deep Cards</span>
+            </button>
+            <div className="shrink-0 scale-90 origin-right">
+              <HeartReactionCannon
+                partnerName={partnerProfile?.displayName || 'Partner'}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Row 1: Mood Aura & Relationship Radar */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <CoupleMoodAuraWidget
+            partnerName={partnerProfile?.displayName || 'Partner'}
+            onSendComfort={(tip) => handleSendToChat(`Comforting thoughts from my Mood Aura: ${tip}`)}
+          />
+          <RelationshipRadarWidget />
+        </div>
+
+        {/* Row 2: Lo-Fi Radio Soundscapes & Affection Bank */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RomanticSoundscapesWidget />
+          <AffectionBankWidget
+            partnerName={partnerProfile?.displayName || 'Partner'}
+            onSendToChat={handleSendToChat}
+          />
+        </div>
+
+        {/* Row 3A: Instant Connection & Haptics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <HeartbeatPulseButton
+            coupleId={coupleId || ''}
+            partnerName={partnerProfile?.displayName || 'Partner'}
+            myName={userProfile?.displayName || 'Me'}
+          />
+          <LoveTapMorsePad
+            partnerName={partnerProfile?.displayName || 'Partner'}
+            onSendToChat={handleSendToChat}
+          />
+        </div>
+
+        {/* Row 3B: Date Decider & Fortune Capsule */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <LoveDiceDecider
+            partnerName={partnerProfile?.displayName || 'Partner'}
+            onSendToChat={handleSendToChat}
+          />
+          <DailyFortuneCapsule
+            partnerName={partnerProfile?.displayName || 'Partner'}
+            onSendToChat={handleSendToChat}
+          />
+        </div>
+
+        {/* Row 4: Gratitude Jar, Time Capsule & Micro Bucket List */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-1">
+            <GratitudeJarWidget
+              partnerName={partnerProfile?.displayName || 'Partner'}
+              myName={userProfile?.displayName || 'Me'}
+              onSendToChat={handleSendToChat}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <QuickTimeCapsuleWidget
+              coupleId={coupleId || ''}
+              myUid={myUid}
+              partnerName={partnerProfile?.displayName || 'Partner'}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <CoupleBucketChecklistWidget
+              partnerName={partnerProfile?.displayName || 'Partner'}
+              myName={userProfile?.displayName || 'Me'}
+              onShareMilestone={handleSendToChat}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Recent Chat Snippet */}
       {lastMessage && (
         <div
@@ -1281,6 +1458,28 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
       <PetNameCustomizerModal
         isOpen={showPetNameModal}
         onClose={() => setShowPetNameModal(false)}
+      />
+
+      {/* Bedtime Breathing Night Light Modal */}
+      <SanctuaryNightLightModal
+        isOpen={showNightLight}
+        onClose={() => setShowNightLight(false)}
+        partnerName={partnerProfile?.displayName || 'Partner'}
+      />
+
+      {/* Synchronized Media & Movie Lounge Modal */}
+      <TogetherLoungeModal
+        isOpen={showTogetherLounge}
+        onClose={() => setShowTogetherLounge(false)}
+        partnerName={partnerProfile?.displayName || 'Partner'}
+      />
+
+      {/* 100+ Deep Spark Romantic Questions Deck Modal */}
+      <DeepSparkQuestionsModal
+        isOpen={showDeepSpark}
+        onClose={() => setShowDeepSpark(false)}
+        partnerName={partnerProfile?.displayName || 'Partner'}
+        onSendToChat={handleSendToChat}
       />
     </div>
   );

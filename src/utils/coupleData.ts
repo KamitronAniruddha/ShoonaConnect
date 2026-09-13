@@ -277,6 +277,36 @@ export const THEMES = {
     cardBorder: 'border-rose-200 dark:border-rose-800/60 shadow-[0_0_15px_rgba(251,113,133,0.2)]',
     tag: 'Japanese Sakura & Champagne',
   },
+  starlight_diamond: {
+    name: 'Starlight Diamond 💎✨',
+    primary: 'sky',
+    accent: '#38bdf8',
+    gradient: 'from-[#071126] via-[#102a4e] to-[#0284c7]',
+    lightBg: 'bg-sky-50/70',
+    banner: 'bg-gradient-to-r from-[#031525] via-[#0b3c5d] to-[#38bdf8]',
+    cardBorder: 'border-sky-400/40 shadow-[0_0_18px_rgba(56,189,248,0.25)]',
+    tag: 'Cosmic Diamonds & Cyan Stardust',
+  },
+  royal_crimson: {
+    name: 'Royal Crimson & Gold 🍷👑',
+    primary: 'rose',
+    accent: '#e11d48',
+    gradient: 'from-[#4c0519] via-[#881337] to-[#d97706]',
+    lightBg: 'bg-rose-50/70',
+    banner: 'bg-gradient-to-r from-[#881337] via-[#be123c] to-[#f59e0b]',
+    cardBorder: 'border-amber-400/50 shadow-[0_0_18px_rgba(245,158,11,0.25)]',
+    tag: 'Imperial Romance & Vintage Gold',
+  },
+  amethyst_dream: {
+    name: 'Amethyst Dream 🔮💜',
+    primary: 'purple',
+    accent: '#c084fc',
+    gradient: 'from-[#2e1065] via-[#581c87] to-[#db2777]',
+    lightBg: 'bg-purple-50/70',
+    banner: 'bg-gradient-to-r from-[#3b0764] via-[#7e22ce] to-[#ec4899]',
+    cardBorder: 'border-purple-400/40 shadow-[0_0_18px_rgba(192,132,252,0.25)]',
+    tag: 'Mystic Twilight & Velvet Opal',
+  },
 };
 
 export interface PreciseLoveTime {
