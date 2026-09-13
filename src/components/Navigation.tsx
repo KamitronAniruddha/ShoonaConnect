@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { ActiveTab } from '../types';
+import { ActiveTab, isAdminEmail } from '../types';
 import { calculateDaysTogether, THEMES } from '../utils/coupleData';
 import {
   Heart,
@@ -25,6 +25,7 @@ import {
   UserCheck,
   Award,
   Compass,
+  ShieldCheck,
 } from 'lucide-react';
 import { PartnerProfileModal } from './PartnerProfileModal';
 
@@ -41,7 +42,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   unreadCount = 0,
   onLockApp,
 }) => {
-  const { userProfile, couple, partnerProfile, logout } = useAuth();
+  const { userProfile, currentUser, couple, partnerProfile, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
@@ -49,6 +50,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   const daysTogether = calculateDaysTogether(couple?.anniversaryDate);
   const themeKey = couple?.theme || 'rose';
   const theme = THEMES[themeKey] || THEMES.rose;
+
+  const userEmail = userProfile?.email || currentUser?.email;
+  const isSuperAdmin = isAdminEmail(userEmail);
 
   const mainTabs = [
     { id: 'home', label: 'Home', icon: Heart },
@@ -58,6 +62,16 @@ export const Navigation: React.FC<NavigationProps> = ({
   ];
 
   const moreTabs = [
+    ...(isSuperAdmin
+      ? [
+          {
+            id: 'admin',
+            label: '👑 Admin Overhaul',
+            icon: ShieldCheck,
+            desc: 'Users join logs, relationships & analytics',
+          },
+        ]
+      : []),
     { id: 'achievements', label: 'Saathi Achievements', icon: Award, desc: '69 couple badges & milestones' },
     { id: 'letters', label: 'Love Letters', icon: Mail, desc: 'Timelocked & sealed letters' },
     { id: 'notes', label: 'Shared Notes', icon: FileText, desc: 'Collaborative lists & plans' },
@@ -197,6 +211,22 @@ export const Navigation: React.FC<NavigationProps> = ({
 
           {/* Quick Controls: Dark/Light Mode, Lock & Settings */}
           <div className="flex items-center gap-1.5">
+            {/* Super Admin Overhaul Button */}
+            {isSuperAdmin && (
+              <button
+                id="btn-nav-admin"
+                onClick={() => setActiveTab('admin')}
+                title="👑 Admin Overhaul Dashboard"
+                className={`p-2 rounded-full transition-colors cursor-pointer ${
+                  activeTab === 'admin'
+                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
+                    : 'text-amber-500 hover:text-amber-400 hover:bg-amber-500/10'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Theme Toggle Button */}
             <button
               id="btn-nav-theme-toggle"

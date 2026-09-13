@@ -647,7 +647,134 @@ export type ActiveTab =
   | 'settings'
   | 'features'
   | 'achievements'
-  | 'period';
+  | 'period'
+  | 'admin';
+
+export const ADMIN_EMAIL = 'kamitronaniruddha@gmail.com';
+
+export const isAdminEmail = (email?: string | null): boolean => {
+  if (!email) return false;
+  return email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+};
+
+export type SiteOperationalStatus = 'operational' | 'suspended';
+export type AuthAccessStatus = 'all_enabled' | 'disable_signups' | 'disable_all_auth';
+
+export interface SystemAccessControl {
+  siteStatus: SiteOperationalStatus;
+  authStatus: AuthAccessStatus;
+  suspendedBy: string;
+  suspendedAt?: string;
+  suspendDurationType: 'indefinite' | 'timer';
+  suspendUntil?: string | null; // ISO string when scheduled to re-enable
+  noticeTitle: string;
+  noticeMessage?: string;
+  allowAdminBypass: boolean;
+  adminPasskey?: string;
+  lastUpdated: string;
+}
+
+export interface AdminUserRecord {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  nickname?: string;
+  gender?: string;
+  photoURL?: string;
+  occupation?: string;
+  occupationType?: string;
+  birthday?: string;
+  zodiac?: string;
+  loveLanguage?: string;
+  deviceInfo?: string;
+  coupleId?: string | null;
+  pairCode?: string | null;
+  onboardingCompleted?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  partnerInfo?: {
+    id?: string;
+    displayName?: string;
+    email?: string;
+    photoURL?: string;
+  };
+  relationshipStatus?: 'connected' | 'pending' | 'single' | 'breakup_pending' | 'dissolved';
+  metrics?: {
+    messagesCount?: number;
+    lettersCount?: number;
+    photosCount?: number;
+    dailyAnswersCount?: number;
+    gamesPlayedCount?: number;
+  };
+}
+
+export interface AdminCoupleRecord {
+  id: string;
+  coupleName: string;
+  partner1Id: string;
+  partner2Id: string;
+  partner1Name?: string;
+  partner2Name?: string;
+  partner1Email?: string;
+  partner2Email?: string;
+  partner1Photo?: string;
+  partner2Photo?: string;
+  anniversaryDate?: string;
+  anniversaryTime?: string;
+  datingStartTime?: string;
+  status: 'connected' | 'pending' | 'breakup_pending' | 'dissolved';
+  relationshipStatus?: string;
+  pairCode: string;
+  theme?: string;
+  pinLockEnabled?: boolean;
+  pet?: {
+    name?: string;
+    species?: string;
+    level?: number;
+    affection?: number;
+    hunger?: number;
+    totalFed?: number;
+  };
+  createdAt: string;
+  updatedAt?: string;
+  breakupInitiatedBy?: string;
+  breakupReason?: string;
+  stats?: {
+    messagesCount: number;
+    lettersCount: number;
+    memoriesCount: number;
+    dailyAnswersCount: number;
+    notesCount: number;
+    dreamsCount: number;
+    bucketListCount: number;
+    periodLogsCount: number;
+    gamesMatchesCount: number;
+  };
+}
+
+export interface AdminSystemAnalytics {
+  totalUsers: number;
+  totalCouples: number;
+  activeCouples: number;
+  pendingInvitations: number;
+  singleUsers: number;
+  dissolvedRelationships: number;
+  totalMessages: number;
+  totalLetters: number;
+  totalMemories: number;
+  totalDailyAnswers: number;
+  totalGamesPlayed: number;
+  totalNotes: number;
+  totalDreams: number;
+  totalBucketItems: number;
+  averageDaysTogether: number;
+  longestRelationshipDays: number;
+  userGrowthTimeline: { date: string; usersCount: number; couplesCount: number }[];
+  activeThemesDistribution: { theme: string; count: number }[];
+  petAdoptionRate: number;
+  securityPinAdoptionRate: number;
+}
 
 export interface PeriodLog {
   id: string;

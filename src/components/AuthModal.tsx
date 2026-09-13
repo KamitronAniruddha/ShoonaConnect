@@ -21,6 +21,9 @@ import {
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { SupabaseConnectModal } from './SupabaseConnectModal';
+import { LegalModal, LegalTab } from './LegalModal';
+import { getSystemAccessControl, subscribeToSystemAccessControl } from '../lib/systemSettings';
+import { SystemAccessControl, isAdminEmail, ADMIN_EMAIL } from '../types';
 
 type AuthMode = 'login' | 'signup' | 'forgot_password' | 'reset_password';
 
@@ -44,6 +47,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onBackToLanding }) => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<LegalTab>('privacy');
+  const [accessControl, setAccessControl] = useState<SystemAccessControl>(getSystemAccessControl());
+
+  useEffect(() => {
+    const unsub = subscribeToSystemAccessControl((newSettings) => {
+      setAccessControl(newSettings);
+    });
+    return unsub;
+  }, []);
 
   // Form states
   const [email, setEmail] = useState('');
@@ -64,12 +77,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onBackToLanding }) => {
     setSuccessMessage(null);
   };
 
+  const isAccessAdmin = isAdminEmail(email.trim());
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     resetFormState();
 
     if (!email.trim() || !password) {
       setError('Please enter both your email address and password.');
+      return;
+    }
+
+    // Check if all auth is turned off by Administrator
+    if (accessControl.authStatus === 'disable_all_auth' && !isAccessAdmin) {
+      setError(
+        'User sign-in and login have been turned off by Administrator (Aniruddha). Only the super admin may authenticate at this time.'
+      );
       return;
     }
 
@@ -86,6 +109,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onBackToLanding }) => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     resetFormState();
+
+    // Check if sign-ups are paused or all auth disabled
+    if (accessControl.authStatus === 'disable_signups' || accessControl.authStatus === 'disable_all_auth') {
+      setError(
+        'New user sign-ups are currently turned off by Administrator (Aniruddha). Registration is paused.'
+      );
+      return;
+    }
 
     const cleanUsername = username.trim().toLowerCase().replace(/[^a-zA-Z0-9_.-]/g, '');
     if (!cleanUsername || cleanUsername.length < 3) {
@@ -245,6 +276,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onBackToLanding }) => {
           </p>
         </div>
 
+        {/* Administrative Policy Alerts if restricted */}
+        {accessControl.authStatus === 'disable_all_auth' && (
+          <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 text-xs text-red-700 dark:text-red-300 text-left flex items-start gap-2">
+            <Lock className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+            <div>
+              <span className="font-bold block">Sign-in Turned Off by Admin (Aniruddha)</span>
+              <span>General user login and sign-up are temporarily disabled. Only the platform architect ({ADMIN_EMAIL}) may sign in.</span>
+            </div>
+          </div>
+        )}
+
+        {accessControl.authStatus === 'disable_signups' && authMode === 'signup' && (
+          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/60 text-xs text-amber-800 dark:text-amber-300 text-left flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+            <div>
+              <span className="font-bold block">New Registrations Paused</span>
+              <span>Account creation is temporarily paused by Administrator (Aniruddha). Existing lovers may still sign in.</span>
+            </div>
+          </div>
+        )}
+
         {/* Auth Mode Toggle Tabs (Only shown for Login / Signup) */}
         {(authMode === 'login' || authMode === 'signup') && (
           <div className="flex rounded-2xl bg-slate-100 dark:bg-slate-800/80 p-1 text-xs font-semibold">
@@ -255,13 +307,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onBackToLanding }) => {
                 setAuthMode('login');
                 resetFormState();
               }}
-              className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+              className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 authMode === 'login'
                   ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-xs font-bold'
                   : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
               }`}
             >
-              Sign In
+              <span>Sign In</span>
+              {accessControl.authStatus === 'disable_all_auth' && (
+                <span className="text-[10px] px-1.5 py-0.2 bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-300 rounded font-mono">
+                  Off
+                </span>
+              )}
             </button>
             <button
               id="tab-auth-signup"
@@ -270,13 +327,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onBackToLanding }) => {
                 setAuthMode('signup');
                 resetFormState();
               }}
-              className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+              className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 authMode === 'signup'
                   ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-xs font-bold'
                   : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
               }`}
             >
-              Sign Up
+              <span>Sign Up</span>
+              {(accessControl.authStatus === 'disable_signups' || accessControl.authStatus === 'disable_all_auth') && (
+                <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded font-mono">
+                  Paused
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -653,17 +715,50 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onBackToLanding }) => {
             </div>
           </div>
         </div>
+
+        {/* Legal & Privacy Policy Note */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 text-center text-[11px] text-slate-500 dark:text-neutral-400 flex flex-wrap items-center justify-center gap-1.5">
+          <span>By continuing, you agree to our</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLegalTab('privacy');
+              setLegalModalOpen(true);
+            }}
+            className="text-rose-500 font-bold hover:underline cursor-pointer"
+          >
+            Privacy Policy
+          </button>
+          <span>&amp;</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLegalTab('terms');
+              setLegalModalOpen(true);
+            }}
+            className="text-rose-500 font-bold hover:underline cursor-pointer"
+          >
+            Terms of Service
+          </button>
+        </div>
       </div>
 
       <div className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500 flex items-center justify-center gap-1.5">
         <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
-        <span>Made with love for couples</span>
+        <span>Made with love for couples • Zero-Knowledge Encryption</span>
       </div>
 
       {/* Supabase Connection Setup Modal */}
       <SupabaseConnectModal
         isOpen={showConnectModal}
         onClose={() => setShowConnectModal(false)}
+      />
+
+      {/* Interactive Legal & Privacy Modal */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialTab={legalTab}
       />
     </div>
   );

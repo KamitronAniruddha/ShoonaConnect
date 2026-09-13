@@ -38,6 +38,9 @@ import {
   Clock,
   Cake,
   Database,
+  Mail,
+  ShieldCheck,
+  Code,
 } from 'lucide-react';
 import { getLiveWorkingAppUrl } from '../utils/appUrl';
 import { CoupleQRCode } from './CoupleQRCode';
@@ -51,7 +54,7 @@ import { FeatureShowcaseModal } from './FeatureShowcaseModal';
 import { SupabaseConnectModal } from './SupabaseConnectModal';
 import { isSupabaseConfigured } from '../lib/supabase';
 
-import { ActiveTab } from '../types';
+import { ActiveTab, isAdminEmail } from '../types';
 
 interface SettingsViewProps {
   onSetLockPin?: (pin: string | null) => void;
@@ -61,6 +64,7 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setActiveTab }) => {
   const {
     userProfile,
+    currentUser,
     couple,
     partnerProfile,
     updateCoupleSettings,
@@ -69,6 +73,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
     logout,
   } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+
+  const isSuperAdmin = isAdminEmail(userProfile?.email || currentUser?.email);
 
   const [showFeatureShowcase, setShowFeatureShowcase] = useState(false);
 
@@ -1068,6 +1074,76 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onSetLockPin, setAct
         >
           Database Settings
         </button>
+      </div>
+
+      {/* Super Admin Overhaul Card (Exclusive to kamitronaniruddha@gmail.com) */}
+      {isSuperAdmin && setActiveTab && (
+        <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-rose-500/10 dark:from-amber-950/40 dark:via-slate-900 dark:to-rose-950/30 border-2 border-amber-500/40 dark:border-amber-500/30 shadow-lg space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white font-fraunces flex items-center gap-1.5">
+                    👑 Super Admin Overhaul &amp; System Analytics
+                  </h4>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-extrabold uppercase tracking-wider">
+                    Aniruddha Master Access
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-neutral-300 max-w-xl leading-relaxed">
+                  Real-time visibility across all registered users, signup dates, join timestamps, relationship pairing statuses, message volumes, memories, letters, daily check-ins, and aggregate analytics.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('admin')}
+              className="px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-md shadow-amber-500/20 transition-all cursor-pointer whitespace-nowrap active:scale-95 flex items-center gap-2"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Launch Admin Portal</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* About the Creator & Sanctuary Architecture Card */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-rose-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-500 p-0.5 shadow-md shadow-rose-500/20 shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-slate-900 flex items-center justify-center text-white font-extrabold text-lg font-fraunces">
+                A
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white font-fraunces">
+                  About the Creator: Aniruddha
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 font-bold">
+                  Lead Architect
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Designed &amp; engineered ShoonaConnect as a private digital home for couples.
+              </p>
+            </div>
+          </div>
+          <a
+            href="mailto:kamitronaniruddha@gmail.com"
+            className="px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors text-xs font-semibold flex items-center gap-1.5 cursor-pointer self-stretch sm:self-auto justify-center"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>kamitronaniruddha@gmail.com</span>
+          </a>
+        </div>
+        <p className="text-xs text-slate-600 dark:text-neutral-400 leading-relaxed border-t border-rose-100 dark:border-slate-800 pt-3">
+          ShoonaConnect was built on the core principle of digital intimacy: no algorithms, no ad targeting, and zero public posting. Every feature is crafted exclusively to help two people nurture lasting love.
+        </p>
       </div>
 
       {/* Danger Zone: Break Relationship & Data Purge */}

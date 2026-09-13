@@ -44,7 +44,7 @@ import {
   X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { UserProfile, Couple } from '../types';
+import { UserProfile, Couple, isAdminEmail } from '../types';
 import { compressImage } from '../utils/imageCompressor';
 import { PinInput4 } from './PinInput4';
 import { CoupleQRCode } from './CoupleQRCode';
@@ -53,6 +53,7 @@ import { ConnectHubModal } from './ConnectHubModal';
 import { InvitationPreviewModal } from './InvitationPreviewModal';
 import { PhotoLightboxModal } from './PhotoLightboxModal';
 import { FeatureShowcaseModal } from './FeatureShowcaseModal';
+import { AdminDashboardView } from './AdminDashboardView';
 import { InvitationData } from '../utils/invitationPdf';
 import { ZoomIn } from 'lucide-react';
 import { supabase, createSafeChannel } from '../lib/supabase';
@@ -202,6 +203,9 @@ export const OnboardingView: React.FC = () => {
 
   // Photo lightbox modal state
   const [lightboxPhoto, setLightboxPhoto] = useState<{ url: string; title: string } | null>(null);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+
+  const isSuperAdmin = isAdminEmail(userProfile?.email || currentUser?.email);
 
   // Past Relationship Messaging & Reconnection State
   const [selectedPastCoupleForChat, setSelectedPastCoupleForChat] = useState<Couple | null>(null);
@@ -702,6 +706,18 @@ export const OnboardingView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <button
+              type="button"
+              id="btn-onboarding-admin"
+              onClick={() => setShowAdminDashboard(true)}
+              className="px-3 py-2 rounded-2xl bg-amber-500 text-white hover:bg-amber-600 transition-all text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-amber-500/20"
+              title="Super Admin Dashboard"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin Overhaul</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowFeatureShowcase(true)}
@@ -2470,6 +2486,22 @@ export const OnboardingView: React.FC = () => {
           onClose={() => setShowFeatureShowcase(false)}
           activeTheme={selectedTheme}
         />
+      )}
+
+      {/* Admin Overhaul Modal */}
+      {showAdminDashboard && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md overflow-y-auto p-4 sm:p-6 flex items-center justify-center animate-fade-in">
+          <div className="relative w-full max-w-6xl max-h-[92vh] overflow-y-auto rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-4 sm:p-6">
+            <button
+              onClick={() => setShowAdminDashboard(false)}
+              className="absolute top-4 right-4 z-10 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <X className="w-4 h-4" />
+              <span>Close Admin</span>
+            </button>
+            <AdminDashboardView onClose={() => setShowAdminDashboard(false)} />
+          </div>
+        </div>
       )}
     </div>
   );

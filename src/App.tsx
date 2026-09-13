@@ -22,13 +22,22 @@ import { LandingView } from './components/LandingView';
 import { CoupleGamesView } from './components/CoupleGamesView';
 import { AchievementsView } from './components/AchievementsView';
 import { PeriodTrackerView } from './components/PeriodTrackerView';
+import { AdminDashboardView } from './components/AdminDashboardView';
 import { DissolutionNoticeModal } from './components/DissolutionNoticeModal';
 import { PartnerNotificationToasts } from './components/PartnerNotificationToasts';
 import { BreakupDiscussionRoom } from './components/BreakupDiscussionRoom';
 import { ForceGenderSetup } from './components/ForceGenderSetup';
 import { supabase, createSafeChannel } from './lib/supabase';
 import { messageRowToMessage } from './utils/supabaseMappers';
-import { Heart } from 'lucide-react';
+import { Heart, ShieldAlert, Power } from 'lucide-react';
+import { WebsiteSuspendedScreen } from './components/WebsiteSuspendedScreen';
+import {
+  getSystemAccessControl,
+  subscribeToSystemAccessControl,
+  hasAdminBypass,
+  restoreWebsiteOperational,
+} from './lib/systemSettings';
+import { SystemAccessControl, isAdminEmail } from './types';
 
 const MainApp: React.FC = () => {
   const { userProfile, couple, loading, isPasswordRecovery } = useAuth();
@@ -36,6 +45,18 @@ const MainApp: React.FC = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // System access control & admin bypass state
+  const [accessControl, setAccessControl] = useState<SystemAccessControl>(getSystemAccessControl());
+  const [adminBypassActive, setAdminBypassActive] = useState<boolean>(hasAdminBypass());
+
+  // Listen to system access control real-time broadcasts
+  useEffect(() => {
+    const unsub = subscribeToSystemAccessControl((newSettings) => {
+      setAccessControl(newSettings);
+    });
+    return unsub;
+  }, []);
 
   // Check if PIN lock is set on couple profile on start
   useEffect(() => {
@@ -83,6 +104,10 @@ const MainApp: React.FC = () => {
     };
   }, [couple?.id, userProfile?.uid]);
 
+  // Administrative Check
+  const isAniruddha = isAdminEmail(userProfile?.email);
+  const isSiteSuspended = accessControl.siteStatus === 'suspended';
+
   // Loading state
   if (loading) {
     return (
@@ -99,12 +124,36 @@ const MainApp: React.FC = () => {
     );
   }
 
+  // 🚨 SUSPENSION SCREEN GUARD:
+  // If the website is suspended by Aniruddha, block all regular visitors and users
+  // unless user is Aniruddha (admin email) or entered the admin emergency bypass passkey
+  if (isSiteSuspended && !isAniruddha && !adminBypassActive) {
+    return (
+      <WebsiteSuspendedScreen
+        accessControl={accessControl}
+        onAdminBypassSuccess={() => setAdminBypassActive(true)}
+        onWebsiteRestored={() => {
+          setAccessControl(getSystemAccessControl());
+        }}
+      />
+    );
+  }
+
   // Not signed in -> Show rich feature landing home page OR AuthModal
   if (!userProfile) {
     if (showAuthModal || isPasswordRecovery) {
       return <AuthModal onBackToLanding={() => setShowAuthModal(false)} />;
     }
     return <LandingView onEnterApp={() => setShowAuthModal(true)} setActiveTab={setActiveTab} />;
+  }
+
+  // Allow Super Admin to navigate to Admin Dashboard even if uncoupled
+  if (isAniruddha && activeTab === 'admin') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100">
+        <AdminDashboardView setActiveTab={setActiveTab} />
+      </div>
+    );
   }
 
   // Signed in, but couple not yet connected or onboarding questionnaire needed
@@ -145,6 +194,36 @@ const MainApp: React.FC = () => {
       <DissolutionNoticeModal />
       {needsGender && <ForceGenderSetup />}
       
+      {/* Admin Warning Banner when Site is Suspended to Public */}
+      {isSiteSuspended && (
+        <div className="sticky top-0 z-50 bg-gradient-to-r from-red-950 via-rose-950 to-red-950 text-white px-4 py-2 border-b border-red-800 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
+            <span className="font-semibold">
+              ⚠️ Sanctuary Publicly Suspended: "{accessControl.noticeTitle}". You are viewing via Administrator Bypass.
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                await restoreWebsiteOperational();
+                setAccessControl(getSystemAccessControl());
+              }}
+              className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition-colors cursor-pointer flex items-center gap-1.5"
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>Turn Website Back On Now</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('admin')}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer"
+            >
+              Lockdown Controls
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Header & Mobile Bottom Bar */}
       <Navigation
         activeTab={activeTab}
@@ -174,6 +253,7 @@ const MainApp: React.FC = () => {
         {activeTab === 'dreams' && <DreamsAndGoalsView />}
         {activeTab === 'features' && <LandingView isInsideApp setActiveTab={setActiveTab} />}
         {activeTab === 'period' && <PeriodTrackerView />}
+        {activeTab === 'admin' && <AdminDashboardView setActiveTab={setActiveTab} />}
         {activeTab === 'settings' && (
           <SettingsView onSetLockPin={() => setIsLocked(false)} setActiveTab={setActiveTab} />
         )}
